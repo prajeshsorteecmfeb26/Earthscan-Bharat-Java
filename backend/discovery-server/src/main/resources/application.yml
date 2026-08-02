@@ -1,0 +1,80 @@
+server:
+  port: 8761
+
+spring:
+  application:
+    name: discovery-server
+
+eureka:
+  instance:
+    hostname: ${EUREKA_HOSTNAME:localhost}
+  client:
+    # The registry does not register with itself, nor pull a registry from anyone else.
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: http://${eureka.instance.hostname}:8761/eureka/
+  server:
+    # Self-preservation protects a real cluster from network blips, but during development it keeps
+    # dead instances in the registry long after they stop, which looks like a routing bug.
+    enable-self-preservation: ${EUREKA_SELF_PRESERVATION:false}
+    eviction-interval-timer-in-ms: 15000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  level:
+    com.netflix.eureka: WARN
+    com.netflix.discovery: WARN
+
+# ===========================================================================
+# PROFILES
+# ===========================================================================
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+logging:
+  level:
+    com.earthscan: DEBUG
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+logging:
+  level:
+    root: WARN
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+logging:
+  level:
+    root: WARN
+    com.earthscan: INFO
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

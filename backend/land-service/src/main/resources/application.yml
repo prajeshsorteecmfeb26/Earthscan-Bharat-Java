@@ -1,0 +1,200 @@
+server:
+  port: ${SERVER_PORT:8082}
+
+spring:
+  application:
+    name: land-service
+
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_LAND_DB:earthscan_land}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:10}
+      minimum-idle: 2
+
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        jdbc:
+          batch_size: 25
+    show-sql: ${JPA_SHOW_SQL:false}
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: auto
+        # Bounded retry with backoff. Without this a transient DB blip would either drop the
+        # message or spin it against the broker as fast as the CPU allows.
+        retry:
+          enabled: true
+          initial-interval: 2s
+          max-attempts: 4
+          multiplier: 2.0
+          max-interval: 20s
+        default-requeue-rejected: false   # Exhausted messages go to the DLQ, not back on the queue.
+
+earthscan:
+  jwt:
+    secret: ${JWT_SECRET:ChangeMeInProductionEarthScanBharat2026SigningKey}
+    issuer: ${JWT_ISSUER:EarthScanBackend}
+    audience: ${JWT_AUDIENCE:EarthScanUsers}
+    expiration-ms: ${JWT_EXPIRATION_MS:604800000}
+  bootstrap:
+    seed-demo-listings: ${SEED_DEMO_LISTINGS:false}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{correlationId:-}] [user:%X{userId:-}] %logger{36} - %msg%n"
+  level:
+    root: INFO
+    com.earthscan: ${LOG_LEVEL_EARTHSCAN:INFO}
+    org.hibernate.SQL: ${LOG_LEVEL_SQL:WARN}
+
+# ===========================================================================
+# PROFILES
+# Activate with --spring.profiles.active=dev|test|prod or SPRING_PROFILES_ACTIVE.
+# The default (no profile) stays usable so a clone-and-run still works.
+# ===========================================================================
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+logging:
+  level:
+    com.earthscan: DEBUG
+    org.hibernate.SQL: DEBUG
+    # Shows bound parameters, which is the half that makes SQL logging actually useful.
+    org.hibernate.orm.jdbc.bind: TRACE
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    # In-memory, MySQL-compatible mode so the JPA mappings under test are the real ones.
+    url: jdbc:h2:mem:${spring.application.name}-test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      # create-drop, not update: a test run must start from a known schema, and leaking state
+      # between runs is how a suite becomes order-dependent.
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  rabbitmq:
+    # Tests must never reach a real broker. Publishing is asserted with a mock instead.
+    listener:
+      simple:
+        auto-startup: false
+  cloud:
+    discovery:
+      enabled: false
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+earthscan:
+  jwt:
+    secret: TestOnlySigningKeyForEarthScanBharatIntegrationTests2026
+  bootstrap:
+    seed-admin: false
+    seed-demo-listings: false
+logging:
+  level:
+    root: WARN
+    com.earthscan: INFO
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  jpa:
+    hibernate:
+      # validate, never update. Production schema changes go through migrations so they are
+      # reviewable and reversible; ddl-auto cannot express a rename or a backfill.
+      ddl-auto: validate
+    show-sql: false
+  datasource:
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:20}
+      minimum-idle: 5
+      connection-timeout: 20000
+      max-lifetime: 1200000
+      leak-detection-threshold: 30000
+logging:
+  level:
+    root: WARN
+    com.earthscan: INFO
+    org.hibernate.SQL: WARN
+management:
+  endpoints:
+    web:
+      exposure:
+        # Only what a load balancer and a metrics scraper need. Exposing "*" in production leaks
+        # heap dumps, environment variables and bean definitions.
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+earthscan:
+  bootstrap:
+    seed-demo-listings: false

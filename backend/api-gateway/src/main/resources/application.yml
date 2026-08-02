@@ -1,0 +1,167 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      # Routes are explicit rather than discovery-locator based: an explicit table is the
+      # documentation of the public API surface, and it prevents a newly registered service from
+      # accidentally becoming publicly routable.
+      discovery:
+        locator:
+          enabled: false
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+      routes:
+        - id: auth-service-auth
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
+
+        - id: auth-service-admin
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/admin/**
+
+        - id: land-service-lands
+          uri: lb://land-service
+          predicates:
+            - Path=/api/lands/**
+
+        - id: land-service-saved-searches
+          uri: lb://land-service
+          predicates:
+            - Path=/api/saved-searches/**
+
+        - id: forum-service
+          uri: lb://forum-service
+          predicates:
+            - Path=/api/forum/**
+
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**
+
+        # Aggregated OpenAPI documents, so Swagger UI on the gateway can show every service.
+        - id: auth-service-docs
+          uri: lb://auth-service
+          predicates:
+            - Path=/auth-service/v3/api-docs
+          filters:
+            - RewritePath=/auth-service/v3/api-docs, /v3/api-docs
+
+        - id: land-service-docs
+          uri: lb://land-service
+          predicates:
+            - Path=/land-service/v3/api-docs
+          filters:
+            - RewritePath=/land-service/v3/api-docs, /v3/api-docs
+
+        - id: forum-service-docs
+          uri: lb://forum-service
+          predicates:
+            - Path=/forum-service/v3/api-docs
+          filters:
+            - RewritePath=/forum-service/v3/api-docs, /v3/api-docs
+
+        - id: notification-service-docs
+          uri: lb://notification-service
+          predicates:
+            - Path=/notification-service/v3/api-docs
+          filters:
+            - RewritePath=/notification-service/v3/api-docs, /v3/api-docs
+
+earthscan:
+  jwt:
+    # Never commit a real secret. Supplied by the environment in every deployment.
+    secret: ${JWT_SECRET:ChangeMeInProductionEarthScanBharat2026SigningKey}
+    issuer: ${JWT_ISSUER:EarthScanBackend}
+    audience: ${JWT_AUDIENCE:EarthScanUsers}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:4173,http://localhost:3000}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: auth-service
+        url: /auth-service/v3/api-docs
+      - name: land-service
+        url: /land-service/v3/api-docs
+      - name: forum-service
+        url: /forum-service/v3/api-docs
+      - name: notification-service
+        url: /notification-service/v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{correlationId:-}] %logger{36} - %msg%n"
+  level:
+    root: INFO
+    com.earthscan: ${LOG_LEVEL_EARTHSCAN:INFO}
+    org.springframework.cloud.gateway: ${LOG_LEVEL_GATEWAY:INFO}
+
+# ===========================================================================
+# PROFILES
+# ===========================================================================
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+logging:
+  level:
+    com.earthscan: DEBUG
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+logging:
+  level:
+    root: WARN
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+logging:
+  level:
+    root: WARN
+    com.earthscan: INFO
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

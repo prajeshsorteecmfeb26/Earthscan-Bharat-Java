@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Shared logging configuration for every servlet-based service.
+
+  Lives in common-lib so all four services log identically. Spring Boot picks up
+  logback-spring.xml from anywhere on the classpath, including a dependency jar, and using
+  the -spring variant rather than logback.xml is what makes <springProfile> available.
+
+  The correlation id is the load-bearing part: the gateway mints one per request and every
+  service echoes it, so grepping a single id across all services reconstructs one user action
+  in order. Without it a four-service fan-out produces four unrelated log streams.
+-->
+<configuration scan="false">
+
+    <property name="CORRELATION_PATTERN" value="[%X{correlationId:-no-correlation-id}]"/>
+    <property name="USER_PATTERN" value="[user:%X{userId:-anonymous}]"/>
+    <property name="APP" value="${spring.application.name:-earthscan}"/>
+
+    <!-- ================================================================= dev -->
+    <springProfile name="dev,default">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>
+                    %cyan(%d{HH:mm:ss.SSS}) %highlight(%-5level) %magenta(${CORRELATION_PATTERN})
+                    %yellow(${USER_PATTERN}) %cyan(%logger{36}) - %msg%n%ex{8}
+                </pattern>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- ================================================================ test -->
+    <springProfile name="test">
+        <!--
+          Quiet and un-coloured. A test suite that prints thousands of INFO lines makes the one
+          failure that matters impossible to find, and ANSI escapes corrupt captured output.
+        -->
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} %-5level %logger{25} - %msg%n</pattern>
+            </encoder>
+        </appender>
+
+        <root level="WARN">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- ================================================================ prod -->
+    <springProfile name="prod">
+        <!--
+          Structured JSON to stdout. Container platforms collect stdout, so writing to a file
+          inside a container means the logs die with the container. One JSON object per line is
+          what CloudWatch Insights, Loki and Elasticsearch all parse without a custom grok rule.
+        -->
+        <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <includeMdcKeyName>correlationId</includeMdcKeyName>
+                <includeMdcKeyName>userId</includeMdcKeyName>
+                <customFields>{"service":"${APP}"}</customFields>
+                <fieldNames>
+                    <timestamp>@timestamp</timestamp>
+                    <message>message</message>
+                    <thread>thread</thread>
+                    <logger>logger</logger>
+                    <level>level</level>
+                </fieldNames>
+            </encoder>
+        </appender>
+
+        <!--
+          Asynchronous, because logging must not become the bottleneck under load. discardingThreshold
+          is 0 on purpose: the default of 20% silently drops INFO and DEBUG when the queue is 80%
+          full, which loses exactly the diagnostic detail you need during the incident that filled it.
+        -->
+        <appender name="ASYNC_JSON" class="ch.qos.logback.classic.AsyncAppender">
+            <appender-ref ref="JSON_CONSOLE"/>
+            <queueSize>2048</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+            <includeCallerData>false</includeCallerData>
+            <neverBlock>true</neverBlock>
+        </appender>
+
+        <root level="WARN">
+            <appender-ref ref="ASYNC_JSON"/>
+        </root>
+        <logger name="com.earthscan" level="INFO"/>
+    </springProfile>
+
+    <!-- ============================================== always-on level tuning -->
+    <!-- Noise from libraries that log at INFO by default and say nothing actionable. -->
+    <logger name="org.apache.catalina" level="WARN"/>
+    <logger name="com.netflix.discovery" level="WARN"/>
+    <logger name="com.netflix.eureka" level="WARN"/>
+    <logger name="org.springframework.amqp.rabbit.connection" level="WARN"/>
+    <logger name="_org.springframework.web" level="WARN"/>
+
+    <!--
+      Security events stay at INFO in every profile. Failed logins, access denials and token
+      rejections are the audit trail; losing them to a level change is not acceptable.
+    -->
+    <logger name="com.earthscan.common.security" level="INFO"/>
+    <logger name="com.earthscan.auth.service.AuthService" level="INFO"/>
+
+</configuration>

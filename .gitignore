@@ -1,0 +1,52 @@
+# ------------------------------------------------------------------ Java/Maven
+target/
+# MapStruct mapper implementations and Lombok output are build artefacts, never committed.
+**/generated-sources/
+**/generated-test-sources/
+!.mvn/wrapper/maven-wrapper.jar
+*.jar
+*.war
+*.class
+dependency-reduced-pom.xml
+
+# ------------------------------------------------------------------- secrets
+.env
+*.pem
+*.key
+application-local.yml
+application-local.properties
+
+# --------------------------------------------------------------------- Node
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ------------------------------------------------------------------------ IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+*.swp
+
+# Visual Studio leftovers from the original ASP.NET project
+.vs/
+obj/
+bin/
+*.csproj.user
+
+# ------------------------------------------------------------------------- OS
+.DS_Store
+Thumbs.db
+
+# ---------------------------------------------------------------------- logs
+logs/
+*.log

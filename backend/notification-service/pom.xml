@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.earthscan</groupId>
+        <artifactId>earthscan-parent</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>notification-service</artifactId>
+    <name>EarthScan Bharat :: Notification Service</name>
+    <description>Consumes every domain event and turns it into per-user notifications.
+        Owns the MongoDB earthscan_notifications database.</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.earthscan</groupId>
+            <artifactId>common-lib</artifactId>
+        </dependency>
+
+        <!-- MapStruct runtime. The processor is declared in the parent's
+             annotationProcessorPaths, ordered after Lombok. -->
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Required by SecurityMockMvcConfigurers.springSecurity() in the integration tests. -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+        </dependency>
+
+        <!--
+          Embedded MongoDB for @DataMongoTest. Chosen over Testcontainers because it needs no Docker
+          daemon, which keeps `mvn test` runnable on a machine without one - including most CI
+          images. The trade-off is that it is a reimplementation rather than real MongoDB, so
+          anything depending on genuine server behaviour (transactions, change streams) still needs
+          Testcontainers.
+        -->
+        <dependency>
+            <groupId>de.flapdoodle.embed</groupId>
+            <artifactId>de.flapdoodle.embed.mongo.spring3x</artifactId>
+            <version>4.13.0</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
