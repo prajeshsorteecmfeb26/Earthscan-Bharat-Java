@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "id": 1785827158929,
+    "label": "Thane, Maharashtra",
+    "locationQuery": "421306",
+    "soilTypeName": "Black Soil",
+    "landId": null,
+    "notifyOnMatch": true,
+    "createdAt": "2026-08-04T07:05:58.930Z"
+  }
+]

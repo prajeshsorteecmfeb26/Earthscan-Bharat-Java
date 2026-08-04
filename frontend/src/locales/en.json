@@ -59,7 +59,7 @@
     "redirecting": "Redirecting to login..."
   },
   "dashboard": {
-    "smart_search_placeholder": "Smart Search: Enter Location, PIN Code, or Survey Number...",
+    "smart_search_placeholder": "Enter City Name",
     "search_btn": "Search",
     "regional_survey": "Regional Survey",
     "export_pdf": "Export PDF Report",
