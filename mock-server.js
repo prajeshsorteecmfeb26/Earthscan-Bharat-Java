@@ -83,6 +83,42 @@ function saveSavedSearches() {
 
 loadSavedSearches();
 
+const CONTACT_QUERIES_FILE = path.join(__dirname, 'mock-contact-queries.json');
+let contactQueries = [
+  {
+    id: 'cq-1',
+    name: 'Suresh Patil',
+    email: 'suresh.patil@gmail.com',
+    message: 'Need assistance with soil fertility test report for sugarcane crop in Sangli.',
+    status: 'Pending',
+    reply: '',
+    createdAt: new Date(Date.now() - 86400000).toISOString()
+  }
+];
+
+function loadContactQueries() {
+  if (fs.existsSync(CONTACT_QUERIES_FILE)) {
+    try {
+      const data = fs.readFileSync(CONTACT_QUERIES_FILE, 'utf8');
+      contactQueries = JSON.parse(data);
+    } catch (e) {
+      saveContactQueries();
+    }
+  } else {
+    saveContactQueries();
+  }
+}
+
+function saveContactQueries() {
+  try {
+    fs.writeFileSync(CONTACT_QUERIES_FILE, JSON.stringify(contactQueries, null, 2), 'utf8');
+  } catch (e) {
+    console.error('Error saving contact queries file:', e);
+  }
+}
+
+loadContactQueries();
+
 const soilTypes = ['Black Cotton', 'Red Loam', 'Alluvial', 'Laterite', 'Clay Loam'];
 const districts = ['Nashik', 'Pune', 'Nagpur', 'Bengaluru Rural', 'Coimbatore', 'Gondia', 'Jalgaon', 'Sangli', 'Latur', 'Solapur', 'Ratnagiri', 'Aurangabad'];
 
@@ -829,6 +865,44 @@ const server = http.createServer((req, res) => {
       }
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ message: 'Deleted successfully' }));
+      return;
+    }
+
+    // Contact Us API
+    if (method === 'POST' && (pathname === '/api/contact' || pathname === '/api/contact-queries')) {
+      const newQuery = {
+        id: 'cq-' + Date.now().toString(16),
+        name: body.name || 'User',
+        email: body.email || '',
+        message: body.message || '',
+        status: 'Pending',
+        reply: '',
+        createdAt: new Date().toISOString()
+      };
+      contactQueries.unshift(newQuery);
+      saveContactQueries();
+      res.writeHead(201, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(newQuery));
+      return;
+    }
+
+    if (method === 'GET' && (pathname === '/api/admin/contact-queries' || pathname === '/api/contact-queries')) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(contactQueries));
+      return;
+    }
+
+    if (method === 'PUT' && pathname.match(/^\/api\/admin\/contact-queries\/([a-zA-Z0-9\-]+)\/reply$/)) {
+      const queryId = pathname.split('/')[4];
+      const query = contactQueries.find(q => String(q.id) === String(queryId));
+      if (query) {
+        query.reply = body.reply || '';
+        query.status = 'Answered';
+        query.repliedAt = new Date().toISOString();
+        saveContactQueries();
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(query || { message: 'Updated' }));
       return;
     }
 
