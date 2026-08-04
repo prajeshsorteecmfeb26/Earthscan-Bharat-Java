@@ -1,12 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Container, Row, Col, Card, Form, Button, Badge } from 'react-bootstrap';
+import { useSearchParams } from 'react-router-dom';
 import { Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import InsightsFooter from '../components/InsightsFooter';
 import { CircularProgress } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 
+const DEFAULT_REGIONS = ['Pune', 'Nashik', 'Nagpur', 'Ratnagiri', 'Jalgaon', 'Latur', 'Aurangabad', 'Kolhapur', 'Solapur'];
+
 export default function InvestmentAnalysis() {
-    const [region, setRegion] = useState('Pune');
+    const [searchParams] = useSearchParams();
+    const queryRegion = searchParams.get('region') || searchParams.get('city') || 'Pune';
+
+    const [region, setRegion] = useState(queryRegion);
     const [crop, setCrop] = useState('Sugarcane');
     const [investment, setInvestment] = useState(5000000);
     const [years, setYears] = useState(5);
@@ -15,10 +21,28 @@ export default function InvestmentAnalysis() {
     const [results, setResults] = useState(null);
     const { t } = useTranslation();
 
-    const handleSimulate = () => {
+    const regionOptions = useMemo(() => {
+        if (region && !DEFAULT_REGIONS.includes(region)) {
+            return [region, ...DEFAULT_REGIONS];
+        }
+        return DEFAULT_REGIONS;
+    }, [region]);
+
+    const getSeededFactor = (targetReg, targetCrop, invVal, yearIndex) => {
+        const seedStr = `${targetReg}_${targetCrop}_${invVal}_year${yearIndex}`;
+        let hash = 0;
+        for (let i = 0; i < seedStr.length; i++) {
+            hash = (hash << 5) - hash + seedStr.charCodeAt(i);
+            hash |= 0;
+        }
+        return (Math.abs(hash % 1000) / 1000) * 0.03;
+    };
+
+    const runSimulation = (targetRegionOverride) => {
+        const targetRegion = targetRegionOverride || region;
         setLoading(true);
         setTimeout(() => {
-            // Generate mock projection data
+            // Generate deterministic projection data based on input parameters
             const data = [];
             let currentVal = Number(investment);
             const baseGrowthRate = crop === 'Sugarcane' ? 0.12 : crop === 'Cotton' ? 0.08 : crop === 'Mango' ? 0.15 : 0.10;
@@ -29,8 +53,9 @@ export default function InvestmentAnalysis() {
                     value: Math.round(currentVal),
                     cost: Math.round(Number(investment) + (i * 200000)) // Assuming 2L maintenance per year
                 });
-                // Compound growth
-                currentVal += (currentVal * baseGrowthRate) + (Math.random() * 500000);
+                // Compound growth with deterministic regional market factor
+                const factor = getSeededFactor(targetRegion, crop, investment, i);
+                currentVal += (currentVal * (baseGrowthRate + factor));
             }
 
             const finalValue = data[data.length - 1].value;
@@ -38,6 +63,7 @@ export default function InvestmentAnalysis() {
             const roi = (((finalValue - totalCost) / totalCost) * 100).toFixed(1);
 
             setResults({
+                region: targetRegion,
                 data,
                 finalValue,
                 roi,
@@ -45,7 +71,21 @@ export default function InvestmentAnalysis() {
                 risk: crop === 'Cotton' ? 'High' : 'Medium'
             });
             setLoading(false);
-        }, 1500);
+        }, 1000);
+    };
+
+    useEffect(() => {
+        const reg = searchParams.get('region') || searchParams.get('city');
+        if (reg) {
+            setRegion(reg);
+            runSimulation(reg);
+        } else {
+            runSimulation(region);
+        }
+    }, [searchParams]);
+
+    const handleSimulate = () => {
+        runSimulation(region);
     };
 
     const formatCurrency = (val) => {
@@ -68,13 +108,16 @@ export default function InvestmentAnalysis() {
                                     <Form.Label className="text-secondary small">Target Region</Form.Label>
                                     <Form.Select 
                                         value={region} 
-                                        onChange={e => setRegion(e.target.value)}
+                                        onChange={e => {
+                                            const newReg = e.target.value;
+                                            setRegion(newReg);
+                                            runSimulation(newReg);
+                                        }}
                                         className="bg-transparent text-white border-secondary shadow-none"
                                     >
-                                        <option value="Pune" className="bg-dark">Pune</option>
-                                        <option value="Nashik" className="bg-dark">Nashik</option>
-                                        <option value="Nagpur" className="bg-dark">Nagpur</option>
-                                        <option value="Ratnagiri" className="bg-dark">Ratnagiri</option>
+                                        {regionOptions.map(r => (
+                                            <option key={r} value={r} className="bg-dark">{r}</option>
+                                        ))}
                                     </Form.Select>
                                 </Form.Group>
 

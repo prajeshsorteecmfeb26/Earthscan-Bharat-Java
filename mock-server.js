@@ -84,7 +84,7 @@ function saveSavedSearches() {
 loadSavedSearches();
 
 const soilTypes = ['Black Cotton', 'Red Loam', 'Alluvial', 'Laterite', 'Clay Loam'];
-const districts = ['Nashik', 'Pune', 'Nagpur', 'Bengaluru Rural', 'Coimbatore', 'Sangli'];
+const districts = ['Nashik', 'Pune', 'Nagpur', 'Bengaluru Rural', 'Coimbatore', 'Gondia', 'Jalgaon', 'Sangli', 'Latur', 'Solapur', 'Ratnagiri', 'Aurangabad'];
 
 const lands = [
   {
@@ -211,6 +211,132 @@ const lands = [
     ownerEmail: 'buyer@earthscan.in',
     description: 'Fully equipped coconut plantation with automated drip network and solar fencing.',
     location: 'Pollachi, Coimbatore',
+    imageUrl: 'https://images.unsplash.com/photo-1592982537447-6f2a6a0c7c18?w=800&q=80'
+  },
+  {
+    id: 7,
+    title: 'Grape Vineyard & Onion Cultivation Land',
+    district: 'Jalgaon',
+    state: 'Maharashtra',
+    price: 3900000,
+    sizeInAcres: 6.5,
+    areaAcres: 6.5,
+    soilType: 'Black Cotton',
+    waterSource: 'Borewell & Drip',
+    groundwaterLevelDepth: 28,
+    irrigationAvailable: true,
+    landIntelligenceScore: 92,
+    borewellSuccessProbability: 90,
+    status: 'AVAILABLE',
+    verified: true,
+    ownerEmail: 'farmer@earthscan.in',
+    description: 'Fertile black soil land with high mineral content, optimized for onion, banana, and grape cultivation.',
+    location: 'Raver, Jalgaon',
+    imageUrl: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80'
+  },
+  {
+    id: 8,
+    title: 'Turmeric & Sugarcane Belt Farmland',
+    district: 'Sangli',
+    state: 'Maharashtra',
+    price: 4800000,
+    sizeInAcres: 5.0,
+    areaAcres: 5.0,
+    soilType: 'Alluvial',
+    waterSource: 'Krishna River Lift Irrigation',
+    groundwaterLevelDepth: 15,
+    irrigationAvailable: true,
+    landIntelligenceScore: 95,
+    borewellSuccessProbability: 96,
+    status: 'AVAILABLE',
+    verified: true,
+    ownerEmail: 'farmer@earthscan.in',
+    description: 'Premium riverbank agricultural land with perpetual water security for high-value cash crops.',
+    location: 'Walwa, Sangli',
+    imageUrl: 'https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=800&q=80'
+  },
+  {
+    id: 9,
+    title: 'Soybean & Pulse Agro Plantation',
+    district: 'Latur',
+    state: 'Maharashtra',
+    price: 3100000,
+    sizeInAcres: 8.5,
+    areaAcres: 8.5,
+    soilType: 'Black Cotton',
+    waterSource: 'Deep Borewell',
+    groundwaterLevelDepth: 48,
+    irrigationAvailable: true,
+    landIntelligenceScore: 87,
+    borewellSuccessProbability: 82,
+    status: 'AVAILABLE',
+    verified: true,
+    ownerEmail: 'farmer@earthscan.in',
+    description: 'Expansive black cotton soil plot suitable for pulses, soybean, and solar agri-farming.',
+    location: 'Ausa, Latur',
+    imageUrl: 'https://images.unsplash.com/photo-1592982537447-6f2a6a0c7c18?w=800&q=80'
+  },
+  {
+    id: 10,
+    title: 'Pomegranate & Grape Belt Estate',
+    district: 'Solapur',
+    state: 'Maharashtra',
+    price: 5800000,
+    sizeInAcres: 12.0,
+    areaAcres: 12.0,
+    soilType: 'Clay Loam',
+    waterSource: 'Canal & Well Storage',
+    groundwaterLevelDepth: 32,
+    irrigationAvailable: true,
+    landIntelligenceScore: 89,
+    borewellSuccessProbability: 87,
+    status: 'AVAILABLE',
+    verified: true,
+    ownerEmail: 'farmer@earthscan.in',
+    description: 'High-income export-quality pomegranate farm with drip irrigation grid.',
+    location: 'Pandharpur, Solapur',
+    imageUrl: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&q=80'
+  },
+  {
+    id: 11,
+    title: 'Alphonso Mango & Cashew Grove',
+    district: 'Ratnagiri',
+    state: 'Maharashtra',
+    price: 6500000,
+    sizeInAcres: 9.0,
+    areaAcres: 9.0,
+    soilType: 'Laterite',
+    waterSource: 'Natural Springs & Well',
+    groundwaterLevelDepth: 22,
+    irrigationAvailable: true,
+    landIntelligenceScore: 93,
+    borewellSuccessProbability: 91,
+    status: 'AVAILABLE',
+    verified: true,
+    ownerEmail: 'farmer@earthscan.in',
+    description: 'Coastal Konkan laterite soil plantation ideal for premium Alphonso mangoes and cashew nuts.',
+    location: 'Guhagar, Ratnagiri',
+    imageUrl: 'https://images.unsplash.com/photo-1625246333195-78d9c38ad449?w=800&q=80'
+  },
+  {
+    id: 12,
+    title: 'High-Yield Cotton & Maize Agricultural Plot',
+    district: 'Aurangabad',
+    state: 'Maharashtra',
+    price: 4200000,
+    sizeInAcres: 7.2,
+    areaAcres: 7.2,
+    soilType: 'Black Cotton',
+    waterSource: 'Jayakwadi Canal System',
+    groundwaterLevelDepth: 38,
+    irrigationAvailable: true,
+    landIntelligenceScore: 88,
+    borewellSuccessProbability: 86,
+    status: 'AVAILABLE',
+    verified: true,
+    ownerEmail: 'farmer@earthscan.in',
+    description: 'Fertile Marathwada agricultural plot with canal irrigation for double-crop seasonal rotation.',
+    location: 'Paithan, Aurangabad',
     imageUrl: 'https://images.unsplash.com/photo-1592982537447-6f2a6a0c7c18?w=800&q=80'
   }
 ];
@@ -393,6 +519,45 @@ const server = http.createServer((req, res) => {
     }
 
     if (method === 'POST' && pathname === '/api/auth/reset-password') {
+      const email = (body.email || '').trim();
+      const newPassword = body.newPassword || '';
+
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ message: 'Valid email address is required' }));
+        return;
+      }
+
+      if (!newPassword) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ message: 'Password is required' }));
+        return;
+      }
+
+      if (newPassword.length < 8) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ message: 'Password must be at least 8 characters' }));
+        return;
+      }
+
+      if (newPassword.length > 72) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ message: 'Password must not exceed 72 characters' }));
+        return;
+      }
+
+      if (!/[A-Za-z]/.test(newPassword)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ message: 'Password must contain at least one letter' }));
+        return;
+      }
+
+      if (!/\d/.test(newPassword)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ message: 'Password must contain at least one digit' }));
+        return;
+      }
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ message: 'Password reset successfully' }));
       return;
@@ -709,11 +874,57 @@ const server = http.createServer((req, res) => {
       const id = parseInt(pathname.split('/')[4]);
       const idx = users.findIndex(u => u.id === id);
       if (idx !== -1) {
+        const deletedUser = users[idx];
         users.splice(idx, 1);
         saveUsers();
+
+        // 1. Cascading deletion of user's forum posts
+        for (let i = forumPosts.length - 1; i >= 0; i--) {
+          const p = forumPosts[i];
+          if (
+            (deletedUser.name && p.authorName && p.authorName.toLowerCase() === deletedUser.name.toLowerCase()) ||
+            (deletedUser.email && p.authorEmail && p.authorEmail.toLowerCase() === deletedUser.email.toLowerCase())
+          ) {
+            forumPosts.splice(i, 1);
+          }
+        }
+
+        // 2. Cascading deletion of user's comments across all remaining forum posts
+        forumPosts.forEach(post => {
+          if (Array.isArray(post.comments)) {
+            post.comments = post.comments.filter(c => {
+              const matchName = deletedUser.name && c.authorName && c.authorName.toLowerCase() === deletedUser.name.toLowerCase();
+              const matchEmail = deletedUser.email && c.authorEmail && c.authorEmail.toLowerCase() === deletedUser.email.toLowerCase();
+              return !matchName && !matchEmail;
+            });
+          }
+        });
+
+        // 3. Cascading deletion of user's land listings
+        for (let i = lands.length - 1; i >= 0; i--) {
+          const l = lands[i];
+          if (
+            (deletedUser.email && l.ownerEmail && l.ownerEmail.toLowerCase() === deletedUser.email.toLowerCase()) ||
+            (deletedUser.id && l.ownerId === deletedUser.id)
+          ) {
+            lands.splice(i, 1);
+          }
+        }
+
+        // 4. Cascading deletion of user's saved searches
+        for (let i = savedSearches.length - 1; i >= 0; i--) {
+          const s = savedSearches[i];
+          if (
+            (deletedUser.email && s.userEmail && s.userEmail.toLowerCase() === deletedUser.email.toLowerCase()) ||
+            (deletedUser.id && s.userId === deletedUser.id)
+          ) {
+            savedSearches.splice(i, 1);
+          }
+        }
+        saveSavedSearches();
       }
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ message: 'User deleted successfully' }));
+      res.end(JSON.stringify({ message: 'User and all associated data deleted successfully' }));
       return;
     }
 
