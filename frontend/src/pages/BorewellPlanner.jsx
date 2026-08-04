@@ -219,20 +219,29 @@ export default function BorewellPlanner() {
         });
 
         setTimeout(() => {
-            const newSuccessRate = Math.floor(Math.random() * (95 - 40 + 1) + 40);
-            const baseCost = 30000;
-            const newCost = baseCost + (landSize * 2000) + Math.floor(Math.random() * 15000);
-            const yields = ['0.5 - 1.0', '1.0 - 1.5', '1.5 - 2.0', '2.0 - 3.0', '3.0+'];
-            const newYield = yields[Math.floor(Math.random() * yields.length)];
+            const inputKey = `${city.toLowerCase().trim()}-${area.toLowerCase().trim()}-${landSize}-${waterReq}`;
+            let seed = 0;
+            for (let i = 0; i < inputKey.length; i++) {
+                seed = (seed << 5) - seed + inputKey.charCodeAt(i);
+                seed |= 0;
+            }
+            const absSeed = Math.abs(seed);
 
-            const surfaceP = Math.floor(Math.random() * 30);
-            const fracturedP = Math.floor(Math.random() * (60 - 30) + 30);
+            const newSuccessRate = (absSeed % 56) + 40; // 40 to 95
+            const baseCost = 30000;
+            const costOffset = (absSeed * 13) % 15000;
+            const newCost = baseCost + (numLand * 2000) + costOffset;
+            const yields = ['0.5 - 1.0', '1.0 - 1.5', '1.5 - 2.0', '2.0 - 3.0', '3.0+'];
+            const newYield = yields[(absSeed * 7) % yields.length];
+
+            const surfaceP = (absSeed * 3) % 30; // 0 to 29
+            const fracturedP = ((absSeed * 11) % 31) + 30; // 30 to 60
             const deepP = newSuccessRate; 
 
             setResults({
                 yield: newYield,
                 successRate: newSuccessRate,
-                cost: `₹${newCost.toLocaleString()}`,
+                cost: `₹${newCost.toLocaleString('en-IN')}`,
                 depths: [
                     { label: '50 - 100 feet (Surface Water)', p: surfaceP, variant: surfaceP > 20 ? 'warning' : 'danger' },
                     { label: '100 - 200 feet (Fractured Rock)', p: fracturedP, variant: fracturedP > 40 ? 'success' : 'warning' },

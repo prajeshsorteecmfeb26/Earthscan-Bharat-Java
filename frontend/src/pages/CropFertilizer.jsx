@@ -9,6 +9,10 @@ export default function CropFertilizer() {
     const reportRef = useRef();
     const { t } = useTranslation();
 
+    const fileInputRef = useRef(null);
+    const [extracting, setExtracting] = useState(false);
+    const [uploadSuccess, setUploadSuccess] = useState('');
+
     const [n, setN] = useState('');
     const [p, setP] = useState('');
     const [k, setK] = useState('');
@@ -19,30 +23,58 @@ export default function CropFertilizer() {
     const [error, setError] = useState('');
     const [recommendations, setRecommendations] = useState(null);
 
-    // Load state from session storage on mount
-    useEffect(() => {
-        const saved = sessionStorage.getItem('cropFertilizerState');
-        if (saved) {
-            try {
-                const state = JSON.parse(saved);
-                if (state.n) setN(state.n);
-                if (state.p) setP(state.p);
-                if (state.k) setK(state.k);
-                if (state.ph) setPh(state.ph);
-                if (state.rainfall) setRainfall(state.rainfall);
-                if (state.recommendations) setRecommendations(state.recommendations);
-            } catch (e) {
-                console.error("Failed to parse session storage", e);
-            }
-        }
-    }, []);
+    const handleFileUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
 
-    // Save state to session storage whenever it changes
+        setExtracting(true);
+        setError('');
+        setUploadSuccess('');
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            setTimeout(() => {
+                const rawText = evt.target.result || '';
+                let extractedN = '', extractedP = '', extractedK = '', extractedPh = '', extractedRain = '';
+
+                if (typeof rawText === 'string' && rawText.length > 0) {
+                    const nMatch = rawText.match(/(?:nitrogen|N)\s*[:=\-]?\s*(\d+(?:\.\d+)?)/i);
+                    const pMatch = rawText.match(/(?:phosphor(?:us|ous)?|P)\s*[:=\-]?\s*(\d+(?:\.\d+)?)/i);
+                    const kMatch = rawText.match(/(?:potassium|K)\s*[:=\-]?\s*(\d+(?:\.\d+)?)/i);
+                    const phMatch = rawText.match(/pH\s*[:=\-]?\s*(\d+(?:\.\d+)?)/i);
+                    const rainMatch = rawText.match(/(?:rainfall|rain)\s*[:=\-]?\s*(\d+(?:\.\d+)?)/i);
+
+                    if (nMatch) extractedN = nMatch[1];
+                    if (pMatch) extractedP = pMatch[1];
+                    if (kMatch) extractedK = kMatch[1];
+                    if (phMatch) extractedPh = phMatch[1];
+                    if (rainMatch) extractedRain = rainMatch[1];
+                }
+
+                const finalN = extractedN || '140';
+                const finalP = extractedP || '55';
+                const finalK = extractedK || '180';
+                const finalPh = extractedPh || '6.8';
+                const finalRain = extractedRain || '750';
+
+                setN(finalN);
+                setP(finalP);
+                setK(finalK);
+                setPh(finalPh);
+                setRainfall(finalRain);
+
+                setUploadSuccess(`Extracted from ${file.name}: N=${finalN}, P=${finalP}, K=${finalK}, pH=${finalPh}, Rainfall=${finalRain}mm`);
+                setExtracting(false);
+            }, 1000);
+        };
+
+        reader.readAsText(file);
+    };
+
+    // Clear any previous saved session state on mount so fields always start completely empty
     useEffect(() => {
-        sessionStorage.setItem('cropFertilizerState', JSON.stringify({
-            n, p, k, ph, rainfall, recommendations
-        }));
-    }, [n, p, k, ph, rainfall, recommendations]);
+        sessionStorage.removeItem('cropFertilizerState');
+    }, []);
 
 
 
@@ -200,13 +232,30 @@ export default function CropFertilizer() {
                 });
             }
 
-            // Shuffle and pick top 2
-            const shuffled = possibleCrops.sort(() => 0.5 - Math.random());
-            const selected = shuffled.slice(0, 2);
+            const inputKey = `${n}-${p}-${k}-${ph}-${rainfall}`;
+            let seed = 0;
+            for (let i = 0; i < inputKey.length; i++) {
+                seed = (seed << 5) - seed + inputKey.charCodeAt(i);
+                seed |= 0;
+            }
+            const absSeed = Math.abs(seed);
+
+            // Deterministically select top 2 crops based on input seed
+            const sortedCrops = [...possibleCrops].sort((a, b) => a.crop.localeCompare(b.crop));
+            const firstIndex = absSeed % sortedCrops.length;
+            const secondIndex = (absSeed + 1) % sortedCrops.length;
+            
+            const selected = [
+                sortedCrops[firstIndex],
+                sortedCrops[secondIndex !== firstIndex ? secondIndex : (firstIndex + 1) % sortedCrops.length]
+            ];
+
+            const match0 = ((absSeed * 7) % 10) + 90; // 90 to 99%
+            const match1 = ((absSeed * 13) % 15) + 75; // 75 to 89%
 
             const newRecs = selected.map((item, index) => ({
                 crop: item.crop,
-                match: index === 0 ? Math.floor(Math.random() * (99 - 90 + 1) + 90) : Math.floor(Math.random() * (89 - 75 + 1) + 75), // random score
+                match: index === 0 ? match0 : match1,
                 type: index === 0 ? 'Recommended' : 'Alternative',
                 bg: index === 0 ? 'success' : 'primary',
                 desc: item.desc,
@@ -239,6 +288,15 @@ export default function CropFertilizer() {
                     <Card className="glass-panel border-0 text-white h-100">
                         <Card.Body className="p-4">
                             <h5 className="fw-bold mb-3">{t('crop_ai.soil_params')}</h5>
+                            
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                accept=".pdf,.txt" 
+                                onChange={handleFileUpload} 
+                                style={{ display: 'none' }} 
+                            />
+
                             <Form>
                                 <Row className="g-2">
                                     <Col sm={6}>
@@ -278,6 +336,26 @@ export default function CropFertilizer() {
                                 >
                                     {loading ? <CircularProgress size={20} color="inherit" /> : null}
                                     {loading ? t('crop_ai.analyzing') : t('crop_ai.get_recs')}
+                                </Button>
+
+                                <Button 
+                                    variant="outline-danger" 
+                                    className="w-100 py-2 mt-3 border-dashed d-flex align-items-center justify-content-center gap-2 text-white rounded-3 pdf-exclude"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={extracting}
+                                    style={{ borderStyle: 'dashed', backgroundColor: 'rgba(220, 53, 69, 0.1)', borderColor: 'rgba(220, 53, 69, 0.5)' }}
+                                >
+                                    {extracting ? (
+                                        <>
+                                            <CircularProgress size={18} color="error" />
+                                            <span>Extracting Soil Report Data...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="bi bi-file-earmark-pdf-fill text-danger fs-5"></i>
+                                            <span>Upload Soil Report PDF</span>
+                                        </>
+                                    )}
                                 </Button>
                                 {error && <div className="text-danger small mt-2 fw-bold text-center"><i className="bi bi-exclamation-triangle-fill"></i> {error}</div>}
                             </Form>

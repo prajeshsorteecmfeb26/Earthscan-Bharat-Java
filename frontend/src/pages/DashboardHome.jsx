@@ -206,15 +206,6 @@ export default function DashboardHome() {
         }
     };
 
-    const handleSaveLocation = () => {
-        addSavedSearch({
-            name: locationName,
-            pin: pinCode,
-            soil: 'Black Soil',
-            date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        });
-        alert(t('dashboard.location_saved'));
-    };
 
     const handleGeneratePDF = () => {
         const element = reportRef.current;
@@ -286,11 +277,8 @@ export default function DashboardHome() {
                                         {t('dashboard.regional_survey')}: {locationName}
                                     </h4>
                                     <div className="d-flex gap-2 pdf-exclude">
-                                        <Button variant="outline-light" size="sm" onClick={handleGeneratePDF} className="rounded-pill px-3 border-secondary text-white d-flex align-items-center gap-2 hover-white">
+                                        <Button variant="outline-light" size="sm" onClick={handleGeneratePDF} className="rounded-pill px-3 py-1 text-nowrap d-flex align-items-center gap-1_5 border-secondary text-white hover-white" style={{ fontSize: '0.8rem', fontWeight: 500 }}>
                                             <i className="bi bi-file-earmark-pdf-fill text-danger"></i> {t('dashboard.export_pdf')}
-                                        </Button>
-                                        <Button variant="outline-light" size="sm" onClick={handleSaveLocation} className="rounded-pill px-3 border-secondary text-white d-flex align-items-center gap-2 hover-white">
-                                            <i className="bi bi-bookmark"></i> {t('dashboard.save_location')}
                                         </Button>
                                     </div>
                                 </div>
