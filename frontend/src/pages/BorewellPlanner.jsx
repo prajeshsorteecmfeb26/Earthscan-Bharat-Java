@@ -8,6 +8,8 @@ import html2pdf from 'html2pdf.js';
 import { CircularProgress } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 
+import { fetchAreasByCity } from '../utils/locationUtils';
+
 // Fix leaflet default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -20,24 +22,81 @@ L.Icon.Default.mergeOptions({
 function MapRecenter({ lat, lng }) {
     const map = useMap();
     useEffect(() => {
-        if (lat && lng) map.flyTo([lat, lng], 12, { duration: 1.2 });
+        if (lat && lng) map.flyTo([lat, lng], 13, { duration: 1.2 });
     }, [lat, lng, map]);
     return null;
 }
 
-// Geocode city+area → { lat, lon } via Nominatim
+// Multi-tiered Geocode: city + area → { lat, lon, displayName } via Nominatim & India Post API
 async function geocodeLocation(city, area) {
-    const query = area ? `${area}, ${city}, India` : `${city}, India`;
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
-    try {
-        const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
-        const data = await res.json();
-        if (data && data.length > 0) {
-            return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+    const cleanCity = (city || '').trim();
+    const cleanArea = (area || '').replace(/\s*\(.*?\)/g, '').trim();
+
+    // Strategy 1: Search "CleanArea, CleanCity, India"
+    if (cleanArea && cleanCity) {
+        try {
+            const query = `${cleanArea}, ${cleanCity}, India`;
+            const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=1`;
+            const res = await fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'EarthScanBharat/1.0' } });
+            const data = await res.json();
+            if (data && data.length > 0) {
+                return { 
+                    lat: parseFloat(data[0].lat), 
+                    lon: parseFloat(data[0].lon), 
+                    displayName: data[0].display_name 
+                };
+            }
+        } catch (e) {
+            console.warn('Strategy 1 geocode failed:', e);
         }
-    } catch (e) {
-        console.error('Geocode failed:', e);
     }
+
+    // Strategy 2: Lookup Area in India Post API to get exact Pincode and District, then geocode Pincode
+    if (cleanArea) {
+        try {
+            const postRes = await fetch(`https://api.postalpincode.in/postoffice/${encodeURIComponent(cleanArea)}`);
+            const postData = await postRes.json();
+            if (postData && postData[0]?.Status === 'Success' && postData[0]?.PostOffice) {
+                const match = postData[0].PostOffice.find(po => 
+                    po.District.toLowerCase().includes(cleanCity.toLowerCase()) || cleanCity.toLowerCase().includes(po.District.toLowerCase())
+                ) || postData[0].PostOffice[0];
+
+                if (match?.Pincode) {
+                    const pinUrl = `https://nominatim.openstreetmap.org/search?postalcode=${match.Pincode}&country=India&format=json&limit=1`;
+                    const pinRes = await fetch(pinUrl, { headers: { 'Accept-Language': 'en', 'User-Agent': 'EarthScanBharat/1.0' } });
+                    const pinData = await pinRes.json();
+                    if (pinData && pinData.length > 0) {
+                        return { 
+                            lat: parseFloat(pinData[0].lat), 
+                            lon: parseFloat(pinData[0].lon), 
+                            displayName: `${match.Name}, ${match.District}` 
+                        };
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('Strategy 2 geocode failed:', e);
+        }
+    }
+
+    // Strategy 3: Fallback to "CleanCity, India"
+    if (cleanCity) {
+        try {
+            const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(`${cleanCity}, India`)}&format=json&limit=1`;
+            const res = await fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'EarthScanBharat/1.0' } });
+            const data = await res.json();
+            if (data && data.length > 0) {
+                return { 
+                    lat: parseFloat(data[0].lat), 
+                    lon: parseFloat(data[0].lon), 
+                    displayName: data[0].display_name 
+                };
+            }
+        } catch (e) {
+            console.warn('Strategy 3 geocode failed:', e);
+        }
+    }
+
     return null;
 }
 
@@ -47,7 +106,8 @@ export default function BorewellPlanner() {
 
     const [city, setCity] = useState('');
     const [area, setArea] = useState('');
-    const [pin, setPin] = useState('');
+    const [areasList, setAreasList] = useState([]);
+    const [loadingAreas, setLoadingAreas] = useState(false);
     const [landSize, setLandSize] = useState('');
     const [waterReq, setWaterReq] = useState('');
     const [loading, setLoading] = useState(false);
@@ -66,7 +126,6 @@ export default function BorewellPlanner() {
                 const state = JSON.parse(saved);
                 if (state.city) setCity(state.city);
                 if (state.area) setArea(state.area);
-                if (state.pin) setPin(state.pin);
                 if (state.landSize) setLandSize(state.landSize);
                 if (state.waterReq) setWaterReq(state.waterReq);
                 if (state.results) setResults(state.results);
@@ -79,10 +138,33 @@ export default function BorewellPlanner() {
     // Save state to session storage whenever it changes
     useEffect(() => {
         sessionStorage.setItem('borewellPlannerState', JSON.stringify({
-            city, area, pin, landSize, waterReq, results
+            city, area, landSize, waterReq, results
         }));
-    }, [city, area, pin, landSize, waterReq, results]);
+    }, [city, area, landSize, waterReq, results]);
 
+    // Fetch areas dynamically when city changes
+    useEffect(() => {
+        if (!city.trim() || city.trim().length < 2) {
+            setAreasList([]);
+            setArea('');
+            return;
+        }
+        const timer = setTimeout(async () => {
+            setLoadingAreas(true);
+            try {
+                const list = await fetchAreasByCity(city);
+                setAreasList(list);
+                if (list.length > 0 && !list.includes(area)) {
+                    setArea(list[0]);
+                }
+            } catch (e) {
+                console.error('Failed to load areas for city:', e);
+            } finally {
+                setLoadingAreas(false);
+            }
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [city]);
 
     const handleGeneratePDF = async () => {
         const element = reportRef.current;
@@ -98,7 +180,6 @@ export default function BorewellPlanner() {
         buttons.forEach(btn => btn.style.display = 'none');
 
         try {
-            // In Vite, html2pdf might be on the .default property
             const generatePdf = typeof html2pdf === 'function' ? html2pdf : html2pdf.default;
             await generatePdf().set(opt).from(element).save();
         } catch (error) {
@@ -109,14 +190,9 @@ export default function BorewellPlanner() {
         }
     };
 
-    const handleAnalyze = () => {
-        if (!city || !area || !pin || !landSize || !waterReq) {
+    const handleAnalyze = async () => {
+        if (!city || !area || !landSize || !waterReq) {
             setError(t('borewell.error_fill_all'));
-            return;
-        }
-        const pinRegex = /^[0-9]{6}$/;
-        if (!pinRegex.test(pin)) {
-            setError(t('borewell.error_pin'));
             return;
         }
         const numLand = Number(landSize);
@@ -137,23 +213,18 @@ export default function BorewellPlanner() {
         geocodeLocation(city, area).then(geo => {
             if (geo) {
                 setMapCoords({ lat: geo.lat, lng: geo.lon });
-                setMapLabel(`${area ? area + ', ' : ''}${city}`);
+                const cleanDisplayArea = area ? area.replace(/\s*\(.*?\)/g, '').trim() : '';
+                setMapLabel(cleanDisplayArea ? `${cleanDisplayArea}, ${city}` : city);
             }
         });
 
         setTimeout(() => {
-            // Generate some random but plausible numbers based on inputs
             const newSuccessRate = Math.floor(Math.random() * (95 - 40 + 1) + 40);
-            
-            // Adjust cost based on land size loosely
             const baseCost = 30000;
             const newCost = baseCost + (landSize * 2000) + Math.floor(Math.random() * 15000);
-
-            // Adjust yield randomly
             const yields = ['0.5 - 1.0', '1.0 - 1.5', '1.5 - 2.0', '2.0 - 3.0', '3.0+'];
             const newYield = yields[Math.floor(Math.random() * yields.length)];
 
-            // Randomize depth probabilities based on overall success rate
             const surfaceP = Math.floor(Math.random() * 30);
             const fracturedP = Math.floor(Math.random() * (60 - 30) + 30);
             const deepP = newSuccessRate; 
@@ -170,7 +241,7 @@ export default function BorewellPlanner() {
             });
             
             setLoading(false);
-        }, 1200); // Simulate network/AI delay
+        }, 1200);
     };
 
     return (
@@ -194,32 +265,52 @@ export default function BorewellPlanner() {
                         <Card.Body className="p-4">
                             <h5 className="fw-bold mb-3">{t('borewell.site_params')}</h5>
                             <Form>
-                                <Row className="g-2 mb-3">
-                                    <Col sm={6}>
-                                        <Form.Group>
-                                            <Form.Label className="text-secondary small">{t('borewell.city')}</Form.Label>
-                                            <Form.Control type="text" value={city} onChange={e => setCity(e.target.value)} placeholder="e.g. Pune" className="bg-transparent text-white border-secondary shadow-none" />
-                                        </Form.Group>
-                                    </Col>
-                                    <Col sm={6}>
-                                        <Form.Group>
-                                            <Form.Label className="text-secondary small">{t('borewell.area')}</Form.Label>
-                                            <Form.Control type="text" value={area} onChange={e => setArea(e.target.value)} placeholder="e.g. Kothrud" className="bg-transparent text-white border-secondary shadow-none" />
-                                        </Form.Group>
-                                    </Col>
-                                </Row>
                                 <Form.Group className="mb-3">
-                                    <Form.Label className="text-secondary small">{t('borewell.pin_code')}</Form.Label>
-                                    <Form.Control type="text" value={pin} onChange={e => setPin(e.target.value)} placeholder="e.g. 411038" className="bg-transparent text-white border-secondary shadow-none" />
+                                    <Form.Label className="text-secondary small">{t('borewell.city')}</Form.Label>
+                                    <Form.Control 
+                                        type="text" 
+                                        value={city} 
+                                        onChange={e => { setCity(e.target.value); setError(''); }} 
+                                        placeholder="e.g. Pune or Jalna" 
+                                        className="bg-transparent text-white border-secondary shadow-none" 
+                                    />
                                 </Form.Group>
+
+                                <Form.Group className="mb-3">
+                                    <Form.Label className="text-secondary small">{t('borewell.area')} (Localities in {city || 'City'})</Form.Label>
+                                    <Form.Select 
+                                        value={area} 
+                                        onChange={e => { setArea(e.target.value); setError(''); }} 
+                                        className="bg-dark text-white border-secondary shadow-none"
+                                        disabled={!city.trim() || loadingAreas}
+                                    >
+                                        {!city.trim() ? (
+                                            <option value="">-- Enter City First --</option>
+                                        ) : loadingAreas ? (
+                                            <option value="">Loading areas for {city}...</option>
+                                        ) : areasList.length === 0 ? (
+                                            <option value="">No specific areas found (type city)</option>
+                                        ) : (
+                                            <>
+                                                <option value="">-- Select Area --</option>
+                                                {areasList.map(a => (
+                                                    <option key={a} value={a}>{a}</option>
+                                                ))}
+                                            </>
+                                        )}
+                                    </Form.Select>
+                                </Form.Group>
+
                                 <Form.Group className="mb-3">
                                     <Form.Label className="text-secondary small">{t('borewell.land_size')}</Form.Label>
                                     <Form.Control type="number" value={landSize} onChange={e => setLandSize(Number(e.target.value))} placeholder="5" className="bg-transparent text-white border-secondary shadow-none" />
                                 </Form.Group>
+
                                 <Form.Group className="mb-4">
                                     <Form.Label className="text-secondary small">{t('borewell.water_req')}</Form.Label>
                                     <Form.Control type="number" value={waterReq} onChange={e => setWaterReq(Number(e.target.value))} placeholder="5000" className="bg-transparent text-white border-secondary shadow-none" />
                                 </Form.Group>
+
                                 <Button 
                                     variant="primary" 
                                     className="w-100 py-2 fw-bold border-0 pdf-exclude d-flex justify-content-center align-items-center gap-2" 
@@ -230,7 +321,12 @@ export default function BorewellPlanner() {
                                     {loading ? <CircularProgress size={20} color="inherit" /> : null}
                                     {loading ? t('borewell.scanning') : t('borewell.analyze_btn')}
                                 </Button>
-                                {error && <div className="text-danger small mt-2 fw-bold text-center"><i className="bi bi-exclamation-triangle-fill"></i> {error}</div>}
+
+                                {error && (
+                                    <div className="text-danger small mt-2 fw-bold text-center">
+                                        <i className="bi bi-exclamation-triangle-fill me-1"></i> {error}
+                                    </div>
+                                )}
                             </Form>
                         </Card.Body>
                     </Card>

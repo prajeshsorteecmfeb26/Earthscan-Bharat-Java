@@ -52,15 +52,82 @@ function MapRecenter({ lat, lng }) {
     return null;
 }
 
-// Geocode city name → { lat, lon } via Nominatim (free, no key required)
+// Geocode city name → { lat, lon, displayName, address } via Nominatim (free, no key required)
 async function geocodeCity(query) {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
-    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=1`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'EarthScanBharat/1.0' } });
     const data = await res.json();
     if (data && data.length > 0) {
-        return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), displayName: data[0].display_name };
+        return {
+            lat: parseFloat(data[0].lat),
+            lon: parseFloat(data[0].lon),
+            displayName: data[0].display_name,
+            address: data[0].address
+        };
     }
     return null;
+}
+
+// Multi-tiered PIN code fetcher using accurate web APIs
+async function fetchAccuratePinCode(lat, lon, query, addressData) {
+    // Tier 1: Check Nominatim search address details
+    if (addressData?.postcode) {
+        return addressData.postcode;
+    }
+
+    // Tier 2: Nominatim Reverse Geocoding
+    try {
+        const revUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
+        const revRes = await fetch(revUrl, { headers: { 'Accept-Language': 'en', 'User-Agent': 'EarthScanBharat/1.0' } });
+        const revData = await revRes.json();
+        if (revData?.address?.postcode) {
+            return revData.address.postcode;
+        }
+    } catch (e) {
+        console.warn('Nominatim reverse lookup failed:', e);
+    }
+
+    // Tier 3: India Postal Pincode API (filtered by District & State)
+    try {
+        const cleanQuery = query.split(',')[0].trim();
+        const address = addressData || {};
+        const district = (address.state_district || address.county || address.city || address.town || cleanQuery).toLowerCase();
+        const state = (address.state || '').toLowerCase();
+
+        const postUrl = `https://api.postalpincode.in/postoffice/${encodeURIComponent(cleanQuery)}`;
+        const postRes = await fetch(postUrl);
+        const postData = await postRes.json();
+
+        if (postData && postData[0]?.Status === 'Success' && postData[0]?.PostOffice?.length > 0) {
+            const offices = postData[0].PostOffice;
+            let match = offices.find(po => po.District.toLowerCase() === district);
+            if (!match) {
+                match = offices.find(po => po.District.toLowerCase().includes(district) || district.includes(po.District.toLowerCase()));
+            }
+            if (!match && state) {
+                match = offices.find(po => po.State.toLowerCase() === state);
+            }
+            if (match?.Pincode) {
+                return match.Pincode;
+            }
+        }
+    } catch (e) {
+        console.warn('India Post API lookup failed:', e);
+    }
+
+    // Tier 4: BigDataCloud Reverse Geocoding API
+    try {
+        const bdcUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
+        const bdcRes = await fetch(bdcUrl);
+        const bdcData = await bdcRes.json();
+        if (bdcData?.postcode) {
+            return bdcData.postcode;
+        }
+    } catch (e) {
+        console.warn('BigDataCloud API lookup failed:', e);
+    }
+
+    return 'N/A';
 }
 
 // Fetch weather from Open-Meteo (free, no key required)
@@ -126,7 +193,8 @@ export default function DashboardHome() {
                 const parts = geo.displayName.split(',');
                 const cleanName = parts.slice(0, 2).join(',').trim();
                 setLocationName(cleanName);
-                setPinCode(Math.floor(100000 + Math.random() * 900000).toString());
+                const resolvedPin = await fetchAccuratePinCode(geo.lat, geo.lon, searchQuery, geo.address);
+                setPinCode(resolvedPin);
                 await loadWeather(geo.lat, geo.lon);
             } else {
                 alert('Location not found. Please try a different search term.');
@@ -178,13 +246,11 @@ export default function DashboardHome() {
     }
 
     return (
-        <Container fluid className="p-0">
-            <Row className="g-4">
-                {/* Main Content Column */}
-                <Col lg={8} className="d-flex flex-column gap-4">
-                    
-                    {/* Smart Search Bar */}
-                    <Card className="glass-panel border-0 text-white">
+        <Container fluid className="p-0 d-flex flex-column gap-4">
+            {/* Row 1: Smart Search Bar (Full Width 12 cols) */}
+            <Row>
+                <Col lg={12}>
+                    <Card className="glass-panel border-0 text-white shadow-sm">
                         <Card.Body className="p-3">
                             <Form onSubmit={handleSearch}>
                                 <InputGroup>
@@ -205,11 +271,15 @@ export default function DashboardHome() {
                             </Form>
                         </Card.Body>
                     </Card>
+                </Col>
+            </Row>
 
-                    {/* Regional Survey Card */}
-                    <div ref={reportRef}>
-                        <Card className="glass-panel border-0 text-white">
-                            <Card.Body className="p-4">
+            {/* Row 2: Regional Survey (8 cols) + Weather Intelligence (4 cols) */}
+            <Row className="g-4 align-items-stretch">
+                <Col lg={8} ref={reportRef}>
+                    <Card className="glass-panel border-0 text-white h-100">
+                        <Card.Body className="p-4 d-flex flex-column justify-content-between">
+                            <div>
                                 <div className="d-flex justify-content-between align-items-center mb-4">
                                     <h4 className="mb-0 fw-bold d-flex align-items-center gap-2">
                                         <i className="bi bi-geo-alt-fill text-danger"></i> 
@@ -263,25 +333,94 @@ export default function DashboardHome() {
                                         </div>
                                     </Col>
                                 </Row>
-                            </Card.Body>
-                        </Card>
-                    </div>
+                            </div>
+                        </Card.Body>
+                    </Card>
+                </Col>
 
-                    {/* Live Map Card — centers on searched location */}
-                    <Card className="glass-panel border-0 text-white flex-grow-1" style={{ minHeight: '400px' }}>
+                <Col lg={4}>
+                    <Card className="glass-panel border-0 text-white h-100">
+                        <Card.Body className="p-4 d-flex flex-column justify-content-between">
+                            <div>
+                                <h6 className="fw-bold mb-3 d-flex align-items-center gap-2">
+                                    <i className="bi bi-cloud-sun text-success"></i> {t('dashboard.weather_title')}
+                                    {weatherLoading && <Spinner size="sm" variant="success" className="ms-auto" />}
+                                </h6>
+
+                                {weather && !weatherLoading ? (
+                                    <>
+                                        <div className="d-flex justify-content-between align-items-center mb-4">
+                                            <div>
+                                                <h1 className="display-4 fw-bold mb-0">{weather.temp}°C</h1>
+                                                <p className="text-secondary mb-0">{wmoInfo.label}</p>
+                                                <p className="text-secondary small mb-0" style={{ fontSize: '0.7rem' }}>
+                                                    <i className="bi bi-geo-alt-fill me-1 text-danger"></i>
+                                                    {locationName}
+                                                </p>
+                                            </div>
+                                            <i className={`bi ${wmoInfo.icon} ${wmoInfo.color}`} style={{ fontSize: '3rem' }}></i>
+                                        </div>
+                                        
+                                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-3" style={{ borderColor: 'rgba(255,255,255,0.1) !important' }}>
+                                            <div>
+                                                <div className="text-secondary small">{t('dashboard.humidity')}:</div>
+                                                <div className="fw-bold">{weather.humidity}%</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-secondary small">{t('dashboard.wind_speed')}:</div>
+                                                <div className="fw-bold">{weather.windSpeed} m/s</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-secondary small">Precipitation:</div>
+                                                <div className="fw-bold">{weather.precipitation} mm</div>
+                                            </div>
+                                        </div>
+
+                                        <div className="d-flex align-items-center gap-2 mb-2">
+                                            <Badge bg="success" className="rounded-pill px-2">
+                                                <i className="bi bi-broadcast me-1"></i>Live
+                                            </Badge>
+                                            <small className="text-secondary">via Open-Meteo · {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>
+                                        </div>
+                                        
+                                        <p className="text-info small mb-0 d-flex gap-2">
+                                            <i className="bi bi-info-circle-fill"></i>
+                                            {t('dashboard.weather_tip')}
+                                        </p>
+                                    </>
+                                ) : weatherLoading ? (
+                                    <div className="text-center py-4 text-secondary">
+                                        <Spinner variant="success" className="mb-2" />
+                                        <p className="small mb-0">Fetching live weather…</p>
+                                    </div>
+                                ) : (
+                                    <div className="text-secondary text-center py-3">
+                                        <i className="bi bi-exclamation-triangle-fill text-warning d-block mb-2" style={{ fontSize: '2rem' }}></i>
+                                        <small>Weather data unavailable</small>
+                                    </div>
+                                )}
+                            </div>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+
+            {/* Row 3: Geospatial GIS Mapping Explorer (Full Width 12 cols) */}
+            <Row>
+                <Col lg={12}>
+                    <Card className="glass-panel border-0 text-white">
                         <Card.Body className="p-4 d-flex flex-column">
                             <h5 className="fw-bold mb-1 d-flex align-items-center gap-2">
                                 <i className="bi bi-map"></i> {t('dashboard.gis_title')}
                             </h5>
                             <p className="text-secondary small mb-3">{t('dashboard.gis_desc')}</p>
                             
-                            <div className="flex-grow-1 rounded overflow-hidden border border-secondary" style={{ minHeight: '350px', borderColor: 'rgba(255,255,255,0.1) !important' }}>
-                                <MapContainer center={[coords.lat, coords.lng]} zoom={11} style={{ height: '100%', width: '100%', minHeight: '350px' }}>
+                            <div className="rounded overflow-hidden border border-secondary" style={{ height: '420px', borderColor: 'rgba(255,255,255,0.1) !important' }}>
+                                <MapContainer center={[coords.lat, coords.lng]} zoom={11} style={{ height: '100%', width: '100%' }}>
                                     <TileLayer
                                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                                     />
-                                    {/* Smoothly re-centers/flies to new coords on search */}
                                     <MapRecenter lat={coords.lat} lng={coords.lng} />
                                     <Marker position={[coords.lat, coords.lng]}>
                                         <Popup>
@@ -294,116 +433,8 @@ export default function DashboardHome() {
                         </Card.Body>
                     </Card>
                 </Col>
-
-                {/* Right Sidebar Column */}
-                <Col lg={4} className="d-flex flex-column gap-4">
-                    
-                    {/* Live Weather Card — Open-Meteo API */}
-                    <Card className="glass-panel border-0 text-white">
-                        <Card.Body className="p-4">
-                            <h6 className="fw-bold mb-3 d-flex align-items-center gap-2">
-                                <i className="bi bi-cloud-sun text-success"></i> {t('dashboard.weather_title')}
-                                {weatherLoading && <Spinner size="sm" variant="success" className="ms-auto" />}
-                            </h6>
-
-                            {weather && !weatherLoading ? (
-                                <>
-                                    <div className="d-flex justify-content-between align-items-center mb-4">
-                                        <div>
-                                            <h1 className="display-4 fw-bold mb-0">{weather.temp}°C</h1>
-                                            <p className="text-secondary mb-0">{wmoInfo.label}</p>
-                                            <p className="text-secondary small mb-0" style={{ fontSize: '0.7rem' }}>
-                                                <i className="bi bi-geo-alt-fill me-1 text-danger"></i>
-                                                {locationName}
-                                            </p>
-                                        </div>
-                                        <i className={`bi ${wmoInfo.icon} ${wmoInfo.color}`} style={{ fontSize: '3rem' }}></i>
-                                    </div>
-                                    
-                                    <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-3" style={{ borderColor: 'rgba(255,255,255,0.1) !important' }}>
-                                        <div>
-                                            <div className="text-secondary small">{t('dashboard.humidity')}:</div>
-                                            <div className="fw-bold">{weather.humidity}%</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-secondary small">{t('dashboard.wind_speed')}:</div>
-                                            <div className="fw-bold">{weather.windSpeed} m/s</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-secondary small">Precipitation:</div>
-                                            <div className="fw-bold">{weather.precipitation} mm</div>
-                                        </div>
-                                    </div>
-
-                                    <div className="d-flex align-items-center gap-2 mb-2">
-                                        <Badge bg="success" className="rounded-pill px-2">
-                                            <i className="bi bi-broadcast me-1"></i>Live
-                                        </Badge>
-                                        <small className="text-secondary">via Open-Meteo · {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>
-                                    </div>
-                                    
-                                    <p className="text-info small mb-0 d-flex gap-2">
-                                        <i className="bi bi-info-circle-fill"></i>
-                                        {t('dashboard.weather_tip')}
-                                    </p>
-                                </>
-                            ) : weatherLoading ? (
-                                <div className="text-center py-4 text-secondary">
-                                    <Spinner variant="success" className="mb-2" />
-                                    <p className="small mb-0">Fetching live weather…</p>
-                                </div>
-                            ) : (
-                                <div className="text-secondary text-center py-3">
-                                    <i className="bi bi-exclamation-triangle-fill text-warning d-block mb-2" style={{ fontSize: '2rem' }}></i>
-                                    <small>Weather data unavailable</small>
-                                </div>
-                            )}
-                        </Card.Body>
-                    </Card>
-
-                    {/* Agriculture Services List */}
-                    <Card className="glass-panel border-0 text-white flex-grow-1">
-                        <Card.Body className="p-4">
-                            <h6 className="fw-bold mb-4 d-flex align-items-center gap-2">
-                                <i className="bi bi-journal-text"></i> {t('dashboard.agri_services')}
-                            </h6>
-                            
-                            <div className="d-flex flex-column gap-3">
-                                {/* Service 1 */}
-                                <div className="p-3 rounded border border-secondary" style={{ borderColor: 'rgba(255,255,255,0.1) !important', background: 'rgba(0,0,0,0.2)' }}>
-                                    <div className="d-flex justify-content-between align-items-start mb-2">
-                                        <h6 className="fw-bold mb-0">{t('dashboard.service1_name')}</h6>
-                                        <Badge bg="primary" className="text-white">{t('dashboard.service1_type')}</Badge>
-                                    </div>
-                                    <p className="text-secondary small mb-2">{t('dashboard.service1_addr')}, {locationName}</p>
-                                    <a href="tel:020-25698421" className="text-success text-decoration-none small fw-bold"><i className="bi bi-telephone-fill"></i> {t('dashboard.call')}: 020-25698421</a>
-                                </div>
-
-                                {/* Service 2 */}
-                                <div className="p-3 rounded border border-secondary" style={{ borderColor: 'rgba(255,255,255,0.1) !important', background: 'rgba(0,0,0,0.2)' }}>
-                                    <div className="d-flex justify-content-between align-items-start mb-2">
-                                        <h6 className="fw-bold mb-0">{t('dashboard.service2_name')}</h6>
-                                        <Badge bg="danger" className="text-white">{t('dashboard.service2_type')}</Badge>
-                                    </div>
-                                    <p className="text-secondary small mb-2">{t('dashboard.service2_addr')}, {locationName}</p>
-                                    <a href="tel:9845012345" className="text-success text-decoration-none small fw-bold"><i className="bi bi-telephone-fill"></i> {t('dashboard.call')}: 9845012345</a>
-                                </div>
-
-                                {/* Service 3 */}
-                                <div className="p-3 rounded border border-secondary" style={{ borderColor: 'rgba(255,255,255,0.1) !important', background: 'rgba(0,0,0,0.2)' }}>
-                                    <div className="d-flex justify-content-between align-items-start mb-2">
-                                        <h6 className="fw-bold mb-0">{t('dashboard.service3_name')}</h6>
-                                        <Badge bg="success" className="text-white">{t('dashboard.service3_type')}</Badge>
-                                    </div>
-                                    <p className="text-secondary small mb-2">{t('dashboard.service3_addr')}, {locationName}</p>
-                                    <a href="tel:0253-2578491" className="text-success text-decoration-none small fw-bold"><i className="bi bi-telephone-fill"></i> {t('dashboard.call')}: 0253-2578491</a>
-                                </div>
-                            </div>
-                        </Card.Body>
-                    </Card>
-                    
-                </Col>
             </Row>
+
             <InsightsFooter />
         </Container>
     );

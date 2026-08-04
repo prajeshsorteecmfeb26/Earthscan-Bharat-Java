@@ -1,14 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 
 export default function ContactUs() {
+    const { user } = useContext(AuthContext) || {};
+
+    const activeUser = React.useMemo(() => {
+        if (user) return user;
+        try {
+            const stored = localStorage.getItem('earthscan_user');
+            return stored ? JSON.parse(stored) : null;
+        } catch {
+            return null;
+        }
+    }, [user]);
+
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [message, setMessage] = useState('');
     const [submitted, setSubmitted] = useState(false);
     const [loading, setLoading] = useState(false);
-    
+
+    useEffect(() => {
+        if (activeUser) {
+            const userName = activeUser.name || activeUser.fullName || activeUser.username || '';
+            const userEmail = activeUser.email || '';
+            if (userName) setName(userName);
+            if (userEmail) setEmail(userEmail);
+        }
+    }, [activeUser]);
+
     const navigate = useNavigate();
 
     const handleSubmit = (e) => {
@@ -17,8 +39,6 @@ export default function ContactUs() {
         setTimeout(() => {
             setLoading(false);
             setSubmitted(true);
-            setName('');
-            setEmail('');
             setMessage('');
             setTimeout(() => setSubmitted(false), 5000);
         }, 1000);
@@ -74,7 +94,7 @@ export default function ContactUs() {
                                                 </div>
                                                 <div>
                                                     <h6 className="fw-bold mb-1">Our Office</h6>
-                                                    <p className="text-secondary small mb-0">123 Tech Park, Pune, Maharashtra 411001</p>
+                                                    <p className="text-secondary small mb-0">East Court, Phoenix Marketcity, Clover Park, Viman Nagar, Pune - 411014</p>
                                                 </div>
                                             </div>
                                             <div className="d-flex align-items-center gap-3">
