@@ -96,7 +96,6 @@ function MainLayout({ children }) {
         drawerItems = [
           { text: 'Admin Dashboard', icon: <DashboardIcon />, path: '/admin' },
           { text: t('sidebar.manage_users'), icon: <ForumIcon />, path: '/admin/users' },
-          { text: t('sidebar.support_queries') || 'Support Queries', icon: <ForumIcon />, path: '/admin/queries' },
           { text: t('sidebar.analytics_reports'), icon: <AssessmentIcon />, path: '/admin/analytics' },
           { text: t('sidebar.forum'), icon: <ForumIcon />, path: '/forum' }
         ];
@@ -344,13 +343,6 @@ function App() {
         <ProtectedRoute allowedRoles={['Admin']}>
           <MainLayout>
             <ManageUsers />
-          </MainLayout>
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/queries" element={
-        <ProtectedRoute allowedRoles={['Admin', 'Agriculture Expert']}>
-          <MainLayout>
-            <AnswerQueries />
           </MainLayout>
         </ProtectedRoute>
       } />

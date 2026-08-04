@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Card, Badge, Form, Button, Tabs, Tab } from 'react-bootstrap';
 import InsightsFooter from '../components/InsightsFooter';
 import { useTranslation } from 'react-i18next';
-import contactApi from '../api/contactApi';
+import { forumApi } from '../api/forumApi';
 
 const STORAGE_KEY = 'earthscan_expert_queries_data';
 
@@ -30,60 +30,7 @@ export default function AnswerQueries() {
 
     useEffect(() => {
         fetchUnansweredForumPosts();
-        fetchContactQueries();
-
-        const handleSync = () => fetchContactQueries();
-        window.addEventListener('storage', handleSync);
-        window.addEventListener('focus', handleSync);
-        return () => {
-            window.removeEventListener('storage', handleSync);
-            window.removeEventListener('focus', handleSync);
-        };
     }, []);
-
-    const fetchContactQueries = async () => {
-        let contactList = [];
-        try {
-            const saved = localStorage.getItem('earthscan_contact_queries');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed)) {
-                    contactList = parsed.filter(c => c && typeof c === 'object' && !Array.isArray(c) && (c.name || c.message));
-                }
-            }
-        } catch (e) {}
-
-        try {
-            const res = await contactApi.getQueries();
-            if (res.data && Array.isArray(res.data)) {
-                const apiList = res.data.filter(c => c && typeof c === 'object' && !Array.isArray(c) && (c.name || c.message));
-                const map = new Map();
-                [...contactList, ...apiList].forEach(c => {
-                    if (c.id) map.set(String(c.id), c);
-                });
-                contactList = Array.from(map.values());
-            }
-        } catch (err) {}
-
-        const contactFormatted = contactList.map(c => ({
-            id: c.id,
-            farmer: c.name ? `${c.name} (${c.email || ''})` : 'Farmer Inquiry',
-            location: 'Contact Us Inquiry',
-            date: c.createdAt ? new Date(c.createdAt).toLocaleDateString() : 'Recent',
-            title: `Contact Us: Message from ${c.name || 'User'}`,
-            description: c.message || 'No description provided',
-            status: c.status || 'Pending',
-            answer: c.reply || ''
-        }));
-
-        setQueries(prev => {
-            const contactIds = new Set(contactFormatted.map(c => String(c.id)));
-            const nonContactPrev = prev.filter(q => !contactIds.has(String(q.id)) && !String(q.id).startsWith('cq-'));
-            const merged = [...contactFormatted, ...nonContactPrev];
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-            return merged;
-        });
-    };
 
     const fetchUnansweredForumPosts = async () => {
         try {
@@ -123,28 +70,10 @@ export default function AnswerQueries() {
     const submitReply = async (id) => {
         if (!replyText.trim()) return;
 
-        if (String(id).startsWith('cq-')) {
-            try {
-                await contactApi.replyQuery(id, replyText);
-            } catch (e) {
-                console.error('Error submitting contact query reply:', e);
-            }
-
-            // Sync to shared contact queries storage so user on /contact sees response immediately
-            try {
-                const saved = localStorage.getItem('earthscan_contact_queries');
-                let list = saved ? JSON.parse(saved) : [];
-                if (Array.isArray(list)) {
-                    list = list.map(c => String(c.id) === String(id) ? { ...c, status: 'Answered', reply: replyText, repliedAt: new Date().toISOString() } : c);
-                    localStorage.setItem('earthscan_contact_queries', JSON.stringify(list));
-                }
-            } catch (e) {}
-        } else {
-            try {
-                await forumApi.addComment(id, replyText);
-            } catch (e) {
-                // Ignore API error for mock static queries
-            }
+        try {
+            await forumApi.addComment(id, replyText);
+        } catch (e) {
+            // Ignore API error for mock static queries
         }
 
         const updated = queries.map(q => 
