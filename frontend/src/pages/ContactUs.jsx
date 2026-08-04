@@ -3,6 +3,10 @@ import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
+import contactApi from '../api/contactApi';
+
+const STORAGE_KEY = 'earthscan_contact_queries';
+
 export default function ContactUs() {
     const { user } = useContext(AuthContext) || {};
 
@@ -21,6 +25,7 @@ export default function ContactUs() {
     const [message, setMessage] = useState('');
     const [submitted, setSubmitted] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [userQueries, setUserQueries] = useState([]);
 
     useEffect(() => {
         if (activeUser) {
@@ -29,20 +34,85 @@ export default function ContactUs() {
             if (userName) setName(userName);
             if (userEmail) setEmail(userEmail);
         }
+        fetchUserQueries();
     }, [activeUser]);
+
+    const fetchUserQueries = async () => {
+        let localList = [];
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) {
+                    localList = parsed.filter(q => q && typeof q === 'object' && !Array.isArray(q) && (q.name || q.message));
+                }
+            }
+        } catch (e) {}
+
+        try {
+            const res = await contactApi.getQueries();
+            if (res.data && Array.isArray(res.data)) {
+                const apiList = res.data.filter(q => q && typeof q === 'object' && !Array.isArray(q) && (q.name || q.message));
+                const mergedMap = new Map();
+                [...localList, ...apiList].forEach(q => {
+                    if (q.id) mergedMap.set(String(q.id), q);
+                });
+                const merged = Array.from(mergedMap.values());
+                setUserQueries(merged);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+                return;
+            }
+        } catch (e) {}
+
+        setUserQueries(localList);
+    };
 
     const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!name.trim() || !email.trim() || !message.trim()) return;
+
         setLoading(true);
-        setTimeout(() => {
-            setLoading(false);
+        try {
+            const payload = { name: name.trim(), email: email.trim(), message: message.trim() };
+            let created = null;
+
+            try {
+                const res = await contactApi.submitQuery(payload);
+                if (res.data && typeof res.data === 'object' && !Array.isArray(res.data) && res.data.id) {
+                    created = res.data;
+                }
+            } catch (err) {}
+
+            if (!created) {
+                created = {
+                    id: 'cq-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+                    name: name.trim(),
+                    email: email.trim(),
+                    message: message.trim(),
+                    status: 'Pending',
+                    reply: '',
+                    createdAt: new Date().toISOString()
+                };
+            }
+
+            const validCurrent = userQueries.filter(q => q && typeof q === 'object' && !Array.isArray(q) && (q.name || q.message));
+            const updated = [created, ...validCurrent.filter(q => String(q.id) !== String(created.id))];
+            setUserQueries(updated);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
             setSubmitted(true);
             setMessage('');
             setTimeout(() => setSubmitted(false), 5000);
-        }, 1000);
+        } catch (error) {
+            console.error('Error submitting contact query:', error);
+        } finally {
+            setLoading(false);
+        }
     };
+
+    const validQueries = userQueries.filter(q => q && typeof q === 'object' && !Array.isArray(q) && (q.name || q.message));
 
     return (
         <div style={{
@@ -118,7 +188,46 @@ export default function ContactUs() {
                                         </div>
                                     </Col>
                                 </Row>
-                                <div className="text-center mt-5">
+
+                                {validQueries && validQueries.length > 0 && (
+                                    <div className="mt-5 pt-4 border-top border-secondary">
+                                        <h5 className="fw-bold mb-3 d-flex align-items-center gap-2">
+                                            <i className="bi bi-chat-left-text-fill text-info"></i>
+                                            My Messages & Admin Responses
+                                        </h5>
+                                        <div className="d-flex flex-column gap-3" style={{ maxHeight: '350px', overflowY: 'auto' }}>
+                                            {validQueries.map((q, idx) => (
+                                                <div key={q.id || idx} className="p-3 rounded border border-secondary" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                                                    <div className="d-flex justify-content-between align-items-center mb-2">
+                                                        <span className="fw-bold text-white small">
+                                                            <i className="bi bi-person-fill text-info me-1"></i>
+                                                            {q.name} <span className="text-secondary font-monospace">({q.email})</span>
+                                                        </span>
+                                                        <span className={`badge bg-${q.status === 'Answered' ? 'success' : 'warning'} px-2 py-1`}>
+                                                            {q.status === 'Answered' ? 'Resolved / Answered' : 'Pending Admin Response'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-light small mb-1" style={{ whiteSpace: 'pre-wrap' }}>{q.message}</p>
+                                                    {q.createdAt && (
+                                                        <div className="text-secondary extra-small mb-2" style={{ fontSize: '0.75rem' }}>
+                                                            Submitted: {new Date(q.createdAt).toLocaleString()}
+                                                        </div>
+                                                    )}
+                                                    {q.reply && (
+                                                        <div className="p-3 mt-2 rounded border border-success" style={{ background: 'rgba(25, 135, 84, 0.2)' }}>
+                                                            <div className="fw-bold text-success small mb-1 d-flex align-items-center gap-1">
+                                                                <i className="bi bi-shield-check text-success fs-6"></i> Admin Response & Feedback:
+                                                            </div>
+                                                            <div className="text-white small" style={{ whiteSpace: 'pre-wrap' }}>{q.reply}</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="text-center mt-4">
                                     <Button onClick={() => navigate(-1)} variant="link" className="text-secondary text-decoration-none small shadow-none">Go Back</Button>
                                 </div>
                             </Card.Body>
