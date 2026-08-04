@@ -7,6 +7,7 @@ import LanguageSelector from '../components/LanguageSelector';
 import { authApi } from '../api/authApi';
 
 import { normalizeRole } from '../utils/roleUtils';
+import { validateEmail, validatePassword } from '../utils/validation';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -26,9 +27,22 @@ export default function Login() {
 
     const handleResetPassword = async (e) => {
         e.preventDefault();
-        setForgotLoading(true);
         setForgotMessage('');
         setForgotError('');
+
+        const emailErr = validateEmail(forgotEmail);
+        if (emailErr) {
+            setForgotError(emailErr);
+            return;
+        }
+
+        const passErr = validatePassword(newPassword);
+        if (passErr) {
+            setForgotError(passErr);
+            return;
+        }
+
+        setForgotLoading(true);
         
         try {
             const response = await authApi.resetPassword(forgotEmail, newPassword);
@@ -170,6 +184,9 @@ export default function Login() {
                             onChange={e => setNewPassword(e.target.value)} 
                             placeholder="Enter new password"
                         />
+                        <Form.Text className="text-secondary small d-block mt-1">
+                            Must be 8–72 characters long and contain at least 1 letter and 1 digit.
+                        </Form.Text>
                     </Form.Group>
                 </Modal.Body>
                 <Modal.Footer className="border-secondary">

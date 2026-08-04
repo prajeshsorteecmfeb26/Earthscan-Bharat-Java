@@ -7,7 +7,7 @@ export default function Forum() {
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState('');
-    
+
     // Modal state for creating a post
     const [showPostModal, setShowPostModal] = useState(false);
     const [newPost, setNewPost] = useState({ title: '', content: '', category: 'General' });
@@ -26,8 +26,8 @@ export default function Forum() {
     const fetchPosts = async () => {
         try {
             const response = await forumApi.listPosts();
-            const fetchedPosts = Array.isArray(response.data) 
-                ? response.data 
+            const fetchedPosts = Array.isArray(response.data)
+                ? response.data
                 : (response.data?.content || []);
             setPosts(fetchedPosts);
             setLoading(false);
@@ -62,7 +62,7 @@ export default function Forum() {
         try {
             const response = await forumApi.addComment(postId, commentContent);
             const newComment = response.data?.comment || response.data;
-            
+
             if (newComment && typeof newComment === 'object' && !Array.isArray(newComment) && newComment.content) {
                 setPosts(prev => (Array.isArray(prev) ? prev : []).map(post => {
                     if (post.id === postId) {
@@ -119,8 +119,8 @@ export default function Forum() {
                 <h2 className="text-white fw-bold mb-0">
                     <i className="bi bi-people-fill text-primary"></i> {t('forum.title')}
                 </h2>
-                <Button 
-                    variant="success" 
+                <Button
+                    variant="success"
                     className="rounded-pill px-4 fw-bold shadow-sm"
                     style={{ background: 'linear-gradient(90deg, #00e676, #00b259)', border: 'none' }}
                     onClick={() => setShowPostModal(true)}
@@ -169,7 +169,7 @@ export default function Forum() {
                                         </div>
                                         <Badge bg={getCategoryBadgeColor(post.category)}>{post.category}</Badge>
                                     </div>
-                                    
+
                                     <h5 className="fw-bold mb-2">{post.title}</h5>
                                     <p className="text-light mb-4" style={{ whiteSpace: 'pre-wrap' }}>{post.content}</p>
 
@@ -178,10 +178,10 @@ export default function Forum() {
                                     {/* Comments Section */}
                                     <div className="mt-3">
                                         <h6 className="fw-bold text-secondary mb-3">
-                                            <i className="bi bi-chat-left-text-fill me-2"></i> 
+                                            <i className="bi bi-chat-left-text-fill me-2"></i>
                                             {post.comments?.length || 0} Comments
                                         </h6>
-                                        
+
                                         {post.comments?.map(comment => (
                                             <div key={comment.id} className="mb-3 p-3 rounded" style={{ background: 'rgba(255,255,255,0.05)' }}>
                                                 <div className="d-flex justify-content-between mb-1">
@@ -196,16 +196,16 @@ export default function Forum() {
 
                                         {activeCommentPostId === post.id ? (
                                             <div className="mt-3">
-                                                <Form.Control 
-                                                    as="textarea" 
-                                                    rows={2} 
-                                                    placeholder="Write a reply..." 
+                                                <Form.Control
+                                                    as="textarea"
+                                                    rows={2}
+                                                    placeholder="Write a reply..."
                                                     value={commentContent}
                                                     onChange={(e) => setCommentContent(e.target.value)}
                                                     className="bg-transparent text-white border-secondary shadow-none mb-2"
                                                 />
                                                 <div className="d-flex justify-content-end gap-2">
-                                                    <Button variant="outline-secondary" size="sm" onClick={() => {setActiveCommentPostId(null); setCommentContent('');}}>Cancel</Button>
+                                                    <Button variant="outline-secondary" size="sm" onClick={() => { setActiveCommentPostId(null); setCommentContent(''); }}>Cancel</Button>
                                                     <Button variant="primary" size="sm" onClick={() => handleAddComment(post.id)} disabled={submittingComment || !commentContent.trim()}>
                                                         {submittingComment ? 'Posting...' : 'Reply'}
                                                     </Button>
@@ -228,9 +228,9 @@ export default function Forum() {
                         <Card.Body className="p-4">
                             <h5 className="fw-bold mb-3"><i className="bi bi-info-circle-fill text-info me-2"></i> About the Forum</h5>
                             <p className="text-secondary small mb-4">
-                                Welcome to the EarthScan Bharat Community Forum! This is a safe space for farmers, buyers, and agriculture experts to share knowledge, discuss current mandi prices, and ask for advice regarding crop planning and borewell drilling.
+                                Welcome to the EarthScan Bharat Community Forum! This is a safe space for farmers, buyers, and agriculture experts to share knowledge, discuss current mandi prices and ask for advice regarding crop planning and borewell drilling.
                             </p>
-                            
+
                             <h6 className="fw-bold mb-3">Popular Categories</h6>
                             <div className="d-flex flex-wrap gap-2">
                                 <Badge bg="success" className="p-2">Crop Advice</Badge>
@@ -255,21 +255,21 @@ export default function Forum() {
                             <Col md={8}>
                                 <Form.Group className="mb-3">
                                     <Form.Label className="text-secondary small">Post Title</Form.Label>
-                                    <Form.Control 
-                                        type="text" 
+                                    <Form.Control
+                                        type="text"
                                         placeholder="What's on your mind?"
                                         value={newPost.title}
-                                        onChange={(e) => setNewPost({...newPost, title: e.target.value})}
-                                        className="bg-transparent text-white border-secondary shadow-none" 
+                                        onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
+                                        className="bg-transparent text-white border-secondary shadow-none"
                                     />
                                 </Form.Group>
                             </Col>
                             <Col md={4}>
                                 <Form.Group className="mb-3">
                                     <Form.Label className="text-secondary small">Category</Form.Label>
-                                    <Form.Select 
+                                    <Form.Select
                                         value={newPost.category}
-                                        onChange={(e) => setNewPost({...newPost, category: e.target.value})}
+                                        onChange={(e) => setNewPost({ ...newPost, category: e.target.value })}
                                         className="bg-transparent text-white border-secondary shadow-none"
                                     >
                                         <option value="General" className="bg-dark">General</option>
@@ -283,13 +283,13 @@ export default function Forum() {
                         </Row>
                         <Form.Group className="mb-3">
                             <Form.Label className="text-secondary small">Content</Form.Label>
-                            <Form.Control 
-                                as="textarea" 
-                                rows={6} 
+                            <Form.Control
+                                as="textarea"
+                                rows={6}
                                 placeholder="Describe your question or share your experience..."
                                 value={newPost.content}
-                                onChange={(e) => setNewPost({...newPost, content: e.target.value})}
-                                className="bg-transparent text-white border-secondary shadow-none" 
+                                onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+                                className="bg-transparent text-white border-secondary shadow-none"
                             />
                         </Form.Group>
                     </Form>

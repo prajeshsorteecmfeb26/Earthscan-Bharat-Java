@@ -99,7 +99,17 @@ export default function LandSearch() {
     }, [fetchLands]);
 
     const handleViewDetails = (land) => {
-        navigate(`/buyer/analysis?landId=${land.id}`);
+        let city = land.district;
+        if (!city && land.location) {
+            if (land.location.includes(',')) {
+                const parts = land.location.split(',');
+                city = parts[parts.length - 1].trim();
+            } else {
+                city = land.location.trim();
+            }
+        }
+        const targetRegion = city || 'Pune';
+        navigate(`/buyer/analysis?region=${encodeURIComponent(targetRegion)}&landId=${land.id}`);
     };
 
     const handleSaveProperty = async (land) => {
@@ -186,7 +196,7 @@ export default function LandSearch() {
                                 </InputGroup.Text>
                                 <Form.Control
                                     type="text"
-                                    placeholder="Search by city, area, or property title..."
+                                    placeholder="Enter City Name"
                                     value={searchTerm}
                                     onChange={handleSearchTermChange}
                                     className="bg-transparent text-white border-secondary shadow-none"
@@ -194,7 +204,7 @@ export default function LandSearch() {
                             </InputGroup>
                         </Col>
                         <Col lg={3}>
-                            <Form.Select 
+                            <Form.Select
                                 value={filterCity}
                                 onChange={handleCityChange}
                                 className="bg-transparent text-white border-secondary shadow-none"
@@ -236,12 +246,12 @@ export default function LandSearch() {
                             </Form.Select>
                         </Col>
                         <Col lg={3}>
-                            <Button 
-                                variant={showAdvanced ? "success" : "primary"} 
+                            <Button
+                                variant={showAdvanced ? "success" : "primary"}
                                 className="w-100 rounded-pill fw-bold"
                                 onClick={() => setShowAdvanced(!showAdvanced)}
                             >
-                                <i className={`bi bi-${showAdvanced ? 'x-circle-fill' : 'funnel-fill'} me-2`}></i> 
+                                <i className={`bi bi-${showAdvanced ? 'x-circle-fill' : 'funnel-fill'} me-2`}></i>
                                 {showAdvanced ? 'Hide Filters' : 'Advanced Filters'}
                             </Button>
                         </Col>
@@ -252,7 +262,7 @@ export default function LandSearch() {
                             <Row className="g-3 align-items-end">
                                 <Col md={3}>
                                     <Form.Label className="small text-secondary fw-bold">Soil Type</Form.Label>
-                                    <Form.Select 
+                                    <Form.Select
                                         value={soilType}
                                         onChange={(e) => setSoilType(e.target.value)}
                                         className="bg-transparent text-white border-secondary shadow-none"
@@ -269,7 +279,7 @@ export default function LandSearch() {
                                     <Form.Label className="small text-secondary fw-bold">
                                         Max Budget: {maxPrice >= 10000000 ? 'Any' : `₹${(maxPrice / 100000).toFixed(1)} Lakhs`}
                                     </Form.Label>
-                                    <Form.Range 
+                                    <Form.Range
                                         min={1000000}
                                         max={10000000}
                                         step={500000}
@@ -281,7 +291,7 @@ export default function LandSearch() {
                                     <Form.Label className="small text-secondary fw-bold">
                                         Min Intelligence Score: {minScore > 0 ? `${minScore}+` : 'Any'}
                                     </Form.Label>
-                                    <Form.Range 
+                                    <Form.Range
                                         min={0}
                                         max={95}
                                         step={5}
@@ -290,7 +300,7 @@ export default function LandSearch() {
                                     />
                                 </Col>
                                 <Col md={3} className="d-flex align-items-center justify-content-between pb-1">
-                                    <Form.Check 
+                                    <Form.Check
                                         type="switch"
                                         id="verified-switch"
                                         label="Verified Only"
@@ -328,24 +338,15 @@ export default function LandSearch() {
                 </h5>
             </div>
 
-            {!loading && !error && filteredLands.length === 0 && (
-                <Card className="glass-panel border-0 text-white text-center p-5 mb-4">
-                    <i className="bi bi-search text-secondary" style={{ fontSize: '2.5rem', opacity: 0.5 }}></i>
-                    <p className="text-secondary mt-3 mb-0">
-                        No listings match your search. Try widening the region or clearing the search box.
-                    </p>
-                </Card>
-            )}
-
             {/* Land Cards Grid */}
             <Row className="g-4">
                 {filteredLands.map(land => (
                     <Col xl={4} lg={6} key={land.id}>
                         <Card className="glass-panel border-0 text-white h-100 hover-scale" style={{ transition: 'transform 0.2s' }}>
                             {/* Card Image Placeholder */}
-                            <div 
-                                style={{ 
-                                    height: '200px', 
+                            <div
+                                style={{
+                                    height: '200px',
                                     background: 'linear-gradient(135deg, rgba(41, 121, 255, 0.2), rgba(0, 230, 118, 0.2))',
                                     borderTopLeftRadius: '16px',
                                     borderTopRightRadius: '16px',
@@ -353,18 +354,18 @@ export default function LandSearch() {
                                 }}
                                 className="d-flex align-items-center justify-content-center"
                             >
-                                <Button 
-                                    variant="light" 
-                                    className="rounded-circle shadow border-0" 
-                                    style={{ 
-                                        position: 'absolute', 
-                                        top: '12px', 
-                                        left: '12px', 
-                                        width: '38px', 
-                                        height: '38px', 
-                                        padding: 0, 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
+                                <Button
+                                    variant="light"
+                                    className="rounded-circle shadow border-0"
+                                    style={{
+                                        position: 'absolute',
+                                        top: '12px',
+                                        left: '12px',
+                                        width: '38px',
+                                        height: '38px',
+                                        padding: 0,
+                                        display: 'flex',
+                                        alignItems: 'center',
                                         justifyContent: 'center',
                                         zIndex: 10,
                                         cursor: 'pointer'
@@ -422,9 +423,9 @@ export default function LandSearch() {
                                             </Badge>
                                         </div>
                                         <div className="progress mt-2" style={{ height: '6px', background: 'rgba(255,255,255,0.1)' }}>
-                                            <div 
-                                                className={`progress-bar ${land.score >= 80 ? 'bg-success' : land.score >= 60 ? 'bg-warning' : 'bg-danger'}`} 
-                                                role="progressbar" 
+                                            <div
+                                                className={`progress-bar ${land.score >= 80 ? 'bg-success' : land.score >= 60 ? 'bg-warning' : 'bg-danger'}`}
+                                                role="progressbar"
                                                 style={{ width: `${land.score}%` }}
                                             ></div>
                                         </div>
@@ -443,7 +444,7 @@ export default function LandSearch() {
                         </Card>
                     </Col>
                 ))}
-                
+
                 {filteredLands.length === 0 && (
                     <Col xs={12}>
                         <div className="text-center p-5 text-secondary glass-panel rounded-4">

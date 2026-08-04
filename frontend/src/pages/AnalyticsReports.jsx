@@ -154,28 +154,12 @@ export default function AnalyticsReports() {
                                         <div className="text-success fw-bold"><i className="bi bi-check-circle-fill"></i> {t('analytics.online')}</div>
                                     </div>
                                     
-                                    <div className="p-3 rounded border border-secondary mb-3 d-flex justify-content-between align-items-center" style={{ background: 'rgba(0,0,0,0.2)' }}>
+                                    <div className="p-3 rounded border border-secondary d-flex justify-content-between align-items-center" style={{ background: 'rgba(0,0,0,0.2)' }}>
                                         <div>
                                             <h6 className="mb-1 fw-bold">{t('analytics.auth_service')}</h6>
                                             <p className="text-secondary small mb-0">JWT Token Issuer</p>
                                         </div>
                                         <div className="text-success fw-bold"><i className="bi bi-check-circle-fill"></i> {t('analytics.online')}</div>
-                                    </div>
-
-                                    <div className="p-3 rounded border border-secondary mb-3 d-flex justify-content-between align-items-center" style={{ background: 'rgba(0,0,0,0.2)' }}>
-                                        <div>
-                                            <h6 className="mb-1 fw-bold">{t('analytics.crop_ai_engine')}</h6>
-                                            <p className="text-secondary small mb-0">ML Prediction Engine</p>
-                                        </div>
-                                        <div className="text-warning fw-bold"><i className="bi bi-exclamation-circle-fill"></i> {t('analytics.high_load')}</div>
-                                    </div>
-
-                                    <div className="p-3 rounded border border-secondary d-flex justify-content-between align-items-center" style={{ background: 'rgba(0,0,0,0.2)' }}>
-                                        <div>
-                                            <h6 className="mb-1 fw-bold">{t('analytics.server_uptime')}</h6>
-                                            <p className="text-secondary small mb-0">Last reboot: 14 days ago</p>
-                                        </div>
-                                        <div className="text-info fw-bold">99.99%</div>
                                     </div>
                                 </Card.Body>
                             </Card>

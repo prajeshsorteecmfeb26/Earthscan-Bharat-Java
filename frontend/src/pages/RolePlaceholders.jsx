@@ -28,7 +28,7 @@ export const AnswerQueries = () => <PlaceholderTemplate title="Expert Q&A Portal
 
 export const ManageCropContent = () => <PlaceholderTemplate title="Manage Crop Data" icon="bi-database-fill-gear" description="Update the central repository of crop parameters, fertilizer recommendations, and ML model thresholds to ensure accurate AI predictions." />;
 
-export const Forum = () => <PlaceholderTemplate title="Community Forum" icon="bi-people-fill" description="Connect with other farmers, share experiences, discuss mandi prices, and ask for advice from the community and verified experts." />;
+export const Forum = () => <PlaceholderTemplate title="Community Forum" icon="bi-people-fill" description="Connect with other farmers, share experiences, discuss mandi prices and ask for advice from the community and verified experts." />;
 
 export const ManageUsers = () => <PlaceholderTemplate title="User Management" icon="bi-person-lines-fill" description="View, edit, and manage all registered accounts on the platform across all roles (Farmers, Buyers, Experts)." />;
 

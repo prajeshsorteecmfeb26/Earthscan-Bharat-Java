@@ -14,12 +14,27 @@ export default function SavedSearches() {
         removeSavedSearch(id);
     };
 
-    const handleLoadProfile = (location) => {
-        if (location.landId) {
-            navigate(`/buyer/analysis?landId=${location.landId}`);
-        } else {
-            navigate(`/search?q=${encodeURIComponent(location.name || '')}`);
+    const extractCityFromLocation = (loc) => {
+        if (loc.city) return loc.city;
+        const pin = loc.pin || '';
+        if (pin.includes(',')) {
+            const parts = pin.split(',');
+            return parts[parts.length - 1].trim();
         }
+        if (pin && pin !== 'Location') return pin.trim();
+        if (loc.name && loc.name.includes(',')) {
+            const parts = loc.name.split(',');
+            return parts[parts.length - 1].trim();
+        }
+        return loc.name || 'Nashik';
+    };
+
+    const handleLoadProfile = (location) => {
+        const targetRegion = extractCityFromLocation(location);
+        const query = new URLSearchParams();
+        if (targetRegion) query.set('region', targetRegion);
+        if (location.landId) query.set('landId', location.landId);
+        navigate(`/buyer/analysis?${query.toString()}`);
     };
 
     return (

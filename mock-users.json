@@ -1,19 +1,5 @@
 [
   {
-    "id": 4,
-    "name": "Admin User",
-    "email": "admin@earthscan.in",
-    "role": "Admin",
-    "token": "mock-jwt-token-4"
-  },
-  {
-    "id": 5,
-    "name": "Shraddha Dabade",
-    "email": "shraddha.dabade.cmfeb26@gmail.com",
-    "role": "Agriculture Expert",
-    "token": "mock-jwt-token-5"
-  },
-  {
     "id": 6,
     "name": "prajeshsortee",
     "email": "prajesh.sortee.cmfeb26@gmail.com",
@@ -21,10 +7,24 @@
     "token": "mock-jwt-token-6"
   },
   {
-    "id": 7,
-    "name": "Kunal Falak",
-    "email": "kunalfalak@gmail.com",
+    "id": 8,
+    "name": "Agriculture Expert",
+    "email": "agricultureexpert@gmail.com",
+    "role": "Agriculture Expert",
+    "token": "mock-jwt-token-8"
+  },
+  {
+    "id": 9,
+    "name": "Admin",
+    "email": "admin@gmail.com",
+    "role": "Admin",
+    "token": "mock-jwt-token-9"
+  },
+  {
+    "id": 10,
+    "name": "Land Buyer",
+    "email": "landbuyer@gmail.com",
     "role": "Land Buyer",
-    "token": "mock-jwt-token-7"
+    "token": "mock-jwt-token-10"
   }
 ]

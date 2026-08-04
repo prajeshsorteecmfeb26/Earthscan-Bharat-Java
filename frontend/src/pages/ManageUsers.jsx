@@ -33,7 +33,7 @@ export default function ManageUsers() {
     };
 
     const handleDeleteUser = async (id) => {
-        if (window.confirm('Are you sure you want to delete this user account permanently?')) {
+        if (window.confirm('Are you sure you want to delete this user account permanently? All their posts, comments, queries, and land listings will be purged.')) {
             try {
                 await adminApi.deleteUser(id);
                 setUsers(users.filter(user => user.id !== id));
