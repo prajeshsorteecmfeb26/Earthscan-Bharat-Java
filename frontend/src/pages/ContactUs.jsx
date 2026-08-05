@@ -75,13 +75,14 @@ export default function ContactUs() {
 
         setLoading(true);
         try {
-            const payload = { name: name.trim(), email: email.trim(), message: message.trim() };
+            const userRole = activeUser?.role || activeUser?.Role || 'Farmer';
+            const payload = { name: name.trim(), email: email.trim(), message: message.trim(), role: userRole };
             let created = null;
 
             try {
                 const res = await contactApi.submitQuery(payload);
                 if (res.data && typeof res.data === 'object' && !Array.isArray(res.data) && res.data.id) {
-                    created = res.data;
+                    created = { ...res.data, role: res.data.role || userRole };
                 }
             } catch (err) {}
 
@@ -91,6 +92,7 @@ export default function ContactUs() {
                     name: name.trim(),
                     email: email.trim(),
                     message: message.trim(),
+                    role: userRole,
                     status: 'Pending',
                     reply: '',
                     createdAt: new Date().toISOString()
@@ -112,7 +114,14 @@ export default function ContactUs() {
         }
     };
 
-    const validQueries = userQueries.filter(q => q && typeof q === 'object' && !Array.isArray(q) && (q.name || q.message));
+    const currentUserEmail = (activeUser?.email || activeUser?.Email || email || '').toLowerCase().trim();
+
+    const validQueries = userQueries.filter(q => {
+        if (!q || typeof q !== 'object' || Array.isArray(q) || (!q.name && !q.message)) return false;
+        if (!currentUserEmail) return false;
+        const queryEmail = (q.email || '').toLowerCase().trim();
+        return queryEmail === currentUserEmail;
+    });
 
     return (
         <div style={{

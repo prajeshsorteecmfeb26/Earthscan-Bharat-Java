@@ -3,13 +3,16 @@ import { Container, Card, Badge, Form, Button, Tabs, Tab } from 'react-bootstrap
 import InsightsFooter from '../components/InsightsFooter';
 import { useTranslation } from 'react-i18next';
 import { forumApi } from '../api/forumApi';
+import contactApi from '../api/contactApi';
+import { normalizeRole } from '../utils/roleUtils';
 
 const STORAGE_KEY = 'earthscan_expert_queries_data';
+const CONTACT_STORAGE_KEY = 'earthscan_contact_queries';
 
 const initialMockQueries = [
-    { id: '1', farmer: 'Ramesh Patil', location: 'Pune', date: '2026-06-29', title: 'Tomato leaves turning yellow', description: 'My tomato crop is 4 weeks old and the lower leaves are turning yellow with brown spots. What should I do?', status: 'Pending' },
-    { id: '2', farmer: 'Suresh Kumar', location: 'Nashik', date: '2026-06-30', title: 'Grapevine pruning timing', description: 'When is the exact best time to prune grapes this season given the delayed monsoon?', status: 'Pending' },
-    { id: '3', farmer: 'Anil Desai', location: 'Kolhapur', date: '2026-06-25', title: 'Sugarcane fertilizer ratio', description: 'What is the recommended NPK ratio for sugarcane in black cotton soil after the first harvest?', status: 'Answered', answer: 'Use a 10:26:26 NPK mix at 200kg per acre for the ratoon crop, followed by urea after 45 days.' }
+    { id: '1', farmer: 'Ramesh Patil', role: 'Farmer', location: 'Pune', date: '2026-06-29', title: 'Tomato leaves turning yellow', description: 'My tomato crop is 4 weeks old and the lower leaves are turning yellow with brown spots. What should I do?', status: 'Pending' },
+    { id: '2', farmer: 'Suresh Kumar', role: 'Farmer', location: 'Nashik', date: '2026-06-30', title: 'Grapevine pruning timing', description: 'When is the exact best time to prune grapes this season given the delayed monsoon?', status: 'Pending' },
+    { id: '3', farmer: 'Anil Desai', role: 'Farmer', location: 'Kolhapur', date: '2026-06-25', title: 'Sugarcane fertilizer ratio', description: 'What is the recommended NPK ratio for sugarcane in black cotton soil after the first harvest?', status: 'Answered', answer: 'Use a 10:26:26 NPK mix at 200kg per acre for the ratoon crop, followed by urea after 45 days.' }
 ];
 
 export default function AnswerQueries() {
@@ -26,40 +29,128 @@ export default function AnswerQueries() {
 
     const [replyingTo, setReplyingTo] = useState(null);
     const [replyText, setReplyText] = useState('');
+    const [activeKey, setActiveKey] = useState('pending');
     const { t } = useTranslation();
 
     useEffect(() => {
-        fetchUnansweredForumPosts();
+        fetchAllQueries();
     }, []);
 
-    const fetchUnansweredForumPosts = async () => {
+    const fetchAllQueries = async () => {
+        let contactList = [];
         try {
-            const response = await forumApi.unanswered();
-            const raw = response.data;
+            const saved = localStorage.getItem(CONTACT_STORAGE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) {
+                    contactList = parsed.filter(q => q && typeof q === 'object' && !Array.isArray(q) && (q.name || q.message));
+                }
+            }
+        } catch (e) {}
+
+        let expertList = [];
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) expertList = parsed;
+            }
+        } catch (e) {}
+
+        let apiContactQueries = [];
+        try {
+            const res = await contactApi.getQueries();
+            if (res.data && Array.isArray(res.data)) {
+                apiContactQueries = res.data.filter(q => q && typeof q === 'object' && !Array.isArray(q) && (q.name || q.message));
+            }
+        } catch (e) {}
+
+        let apiForumQueries = [];
+        try {
+            const res = await forumApi.unanswered();
+            const raw = res.data;
             const unansweredList = Array.isArray(raw) ? raw : (raw?.content || []);
             if (unansweredList && unansweredList.length > 0) {
-                setQueries(prev => {
-                    const existingIds = new Set(prev.map(q => String(q.id)));
-                    const newItems = unansweredList
-                        .filter(p => !existingIds.has(String(p.id)))
-                        .map(p => ({
-                            id: p.id,
-                            farmer: p.authorName || 'Farmer',
-                            location: p.category || 'General',
-                            date: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Recent',
-                            title: p.title,
-                            description: p.content,
-                            status: 'Pending'
-                        }));
-                    if (newItems.length === 0) return prev;
-                    const updated = [...newItems, ...prev];
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-                    return updated;
+                apiForumQueries = unansweredList.map(p => ({
+                    id: p.id,
+                    farmer: p.authorName || 'Farmer',
+                    name: p.authorName || 'Farmer',
+                    role: p.authorRole || 'Farmer',
+                    location: p.category || 'General',
+                    email: p.category || 'General',
+                    date: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Recent',
+                    createdAt: p.createdAt || new Date().toISOString(),
+                    title: p.title,
+                    description: p.content,
+                    message: p.content,
+                    status: 'Pending'
+                }));
+            }
+        } catch (e) {}
+
+        const queryMap = new Map();
+
+        // 1. Initial mock queries
+        initialMockQueries.forEach(q => queryMap.set(String(q.id), q));
+
+        // 2. Expert local storage queries
+        expertList.forEach(q => {
+            if (q && q.id) queryMap.set(String(q.id), q);
+        });
+
+        // 3. Contact local storage queries
+        contactList.forEach(q => {
+            if (q && q.id) {
+                queryMap.set(String(q.id), {
+                    id: q.id,
+                    farmer: q.name || q.farmer || 'User',
+                    name: q.name || q.farmer || 'User',
+                    role: normalizeRole(q.role || q.authorRole) || 'User',
+                    location: q.email || q.location || 'General',
+                    email: q.email || q.location || 'General',
+                    date: q.createdAt ? new Date(q.createdAt).toLocaleString() : (q.date || 'Recent'),
+                    createdAt: q.createdAt,
+                    title: q.subject || q.title || (q.message ? (q.message.length > 50 ? q.message.substring(0, 50) + '...' : q.message) : 'Contact Query'),
+                    description: q.message || q.description || '',
+                    message: q.message || q.description || '',
+                    status: q.status || (q.reply ? 'Answered' : 'Pending'),
+                    answer: q.reply || q.answer || '',
+                    reply: q.reply || q.answer || ''
                 });
             }
-        } catch (err) {
-            console.log('Using local expert queries');
-        }
+        });
+
+        // 4. API Contact queries
+        apiContactQueries.forEach(q => {
+            if (q && q.id) {
+                queryMap.set(String(q.id), {
+                    id: q.id,
+                    farmer: q.name || q.farmer || 'User',
+                    name: q.name || q.farmer || 'User',
+                    role: normalizeRole(q.role || q.authorRole) || 'User',
+                    location: q.email || q.location || 'General',
+                    email: q.email || q.location || 'General',
+                    date: q.createdAt ? new Date(q.createdAt).toLocaleString() : (q.date || 'Recent'),
+                    createdAt: q.createdAt,
+                    title: q.subject || q.title || (q.message ? (q.message.length > 50 ? q.message.substring(0, 50) + '...' : q.message) : 'Contact Query'),
+                    description: q.message || q.description || '',
+                    message: q.message || q.description || '',
+                    status: q.status || (q.reply ? 'Answered' : 'Pending'),
+                    answer: q.reply || q.answer || '',
+                    reply: q.reply || q.answer || ''
+                });
+            }
+        });
+
+        // 5. API Forum queries
+        apiForumQueries.forEach(q => {
+            if (q && q.id && !queryMap.has(String(q.id))) {
+                queryMap.set(String(q.id), q);
+            }
+        });
+
+        const combined = Array.from(queryMap.values());
+        setQueries(combined);
     };
 
     const handleReply = (id) => {
@@ -70,20 +161,55 @@ export default function AnswerQueries() {
     const submitReply = async (id) => {
         if (!replyText.trim()) return;
 
+        const targetQuery = queries.find(q => String(q.id) === String(id));
+        const rawRole = targetQuery?.role || targetQuery?.authorRole || 'User';
+        const userRole = normalizeRole(rawRole) || rawRole;
+
+        try {
+            await contactApi.replyQuery(id, replyText);
+        } catch (e) {}
+
         try {
             await forumApi.addComment(id, replyText);
-        } catch (e) {
-            // Ignore API error for mock static queries
-        }
+        } catch (e) {}
 
         const updated = queries.map(q => 
-            String(q.id) === String(id) ? { ...q, status: 'Answered', answer: replyText } : q
+            String(q.id) === String(id) ? { ...q, status: 'Answered', answer: replyText, reply: replyText } : q
         );
         setQueries(updated);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
+        try {
+            const currentContactSaved = localStorage.getItem(CONTACT_STORAGE_KEY);
+            let currentContactList = currentContactSaved ? JSON.parse(currentContactSaved) : [];
+            if (!Array.isArray(currentContactList)) currentContactList = [];
+
+            const updatedContactList = updated.map(q => ({
+                id: q.id,
+                name: q.name || q.farmer,
+                email: q.email || q.location,
+                message: q.message || q.description,
+                role: q.role || 'User',
+                status: q.status,
+                reply: q.reply || q.answer || replyText,
+                createdAt: q.createdAt || q.date
+            }));
+
+            const contactMap = new Map();
+            currentContactList.forEach(c => { if (c && c.id) contactMap.set(String(c.id), c); });
+            updatedContactList.forEach(c => {
+                if (c && c.id) {
+                    const existing = contactMap.get(String(c.id));
+                    contactMap.set(String(c.id), { ...existing, ...c });
+                }
+            });
+
+            localStorage.setItem(CONTACT_STORAGE_KEY, JSON.stringify(Array.from(contactMap.values())));
+        } catch (e) {}
+
         setReplyingTo(null);
         setReplyText('');
-        alert(t('queries.reply_sent'));
+        alert(t('queries.reply_sent', { defaultValue: 'Reply sent successfully!' }));
     };
 
     const pendingQueries = queries.filter(q => q.status === 'Pending');
@@ -96,7 +222,7 @@ export default function AnswerQueries() {
             </h2>
             <Card className="glass-panel border-0 text-white mb-4">
                 <Card.Body className="p-4">
-                    <Tabs defaultActiveKey="pending" className="mb-4">
+                    <Tabs id="support-queries-tabs" activeKey={activeKey} onSelect={(k) => k && setActiveKey(k)} className="mb-4">
                         <Tab eventKey="pending" title={`${t('queries.pending_tab')} (${pendingQueries.length})`}>
                             <div className="d-flex flex-column gap-3 mt-3">
                                 {pendingQueries.length === 0 ? (

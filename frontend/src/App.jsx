@@ -86,7 +86,6 @@ function MainLayout({ children }) {
         break;
       case 'Agriculture Expert':
         drawerItems = [
-          { text: t('sidebar.answer_queries'), icon: <ForumIcon />, path: '/expert/queries' },
           { text: t('sidebar.manage_crop'), icon: <LandscapeIcon />, path: '/expert/manage-crop' },
           { text: t('sidebar.mandi_schemes'), icon: <AssessmentIcon />, path: '/mandi' },
           { text: t('sidebar.forum'), icon: <ForumIcon />, path: '/forum' }
@@ -177,9 +176,10 @@ function MainLayout({ children }) {
           ml: { sm: `${drawerWidth}px` },
           background: 'transparent',
           boxShadow: 'none',
+          pointerEvents: 'none',
         }}
       >
-        <Toolbar>
+        <Toolbar sx={{ pointerEvents: 'auto' }}>
           <IconButton
             color="inherit"
             aria-label="open drawer"
@@ -317,13 +317,6 @@ function App() {
       } />
 
       {/* Agriculture Expert Routes */}
-      <Route path="/expert/queries" element={
-        <ProtectedRoute allowedRoles={['Agriculture Expert']}>
-          <MainLayout>
-            <AnswerQueries />
-          </MainLayout>
-        </ProtectedRoute>
-      } />
       <Route path="/expert/manage-crop" element={
         <ProtectedRoute allowedRoles={['Agriculture Expert']}>
           <MainLayout>
@@ -348,7 +341,7 @@ function App() {
         </ProtectedRoute>
       } />
       <Route path="/admin/queries" element={
-        <ProtectedRoute allowedRoles={['Admin', 'Agriculture Expert']}>
+        <ProtectedRoute allowedRoles={['Admin']}>
           <MainLayout>
             <AnswerQueries />
           </MainLayout>
