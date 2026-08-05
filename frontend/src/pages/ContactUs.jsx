@@ -114,6 +114,29 @@ export default function ContactUs() {
         }
     };
 
+    const handleDeleteQuery = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this message?')) return;
+
+        try {
+            await contactApi.deleteQuery(id);
+        } catch (e) {}
+
+        const updated = userQueries.filter(q => String(q.id) !== String(id));
+        setUserQueries(updated);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
+        try {
+            const expertSaved = localStorage.getItem('earthscan_expert_queries_data');
+            if (expertSaved) {
+                const parsed = JSON.parse(expertSaved);
+                if (Array.isArray(parsed)) {
+                    const filteredExpert = parsed.filter(q => String(q.id) !== String(id));
+                    localStorage.setItem('earthscan_expert_queries_data', JSON.stringify(filteredExpert));
+                }
+            }
+        } catch (e) {}
+    };
+
     const currentUserEmail = (activeUser?.email || activeUser?.Email || email || '').toLowerCase().trim();
 
     const validQueries = userQueries.filter(q => {
@@ -212,9 +235,20 @@ export default function ContactUs() {
                                                             <i className="bi bi-person-fill text-info me-1"></i>
                                                             {q.name} <span className="text-secondary font-monospace">({q.email})</span>
                                                         </span>
-                                                        <span className={`badge bg-${q.status === 'Answered' ? 'success' : 'warning'} px-2 py-1`}>
-                                                            {q.status === 'Answered' ? 'Resolved / Answered' : 'Pending Admin Response'}
-                                                        </span>
+                                                        <div className="d-flex align-items-center gap-2">
+                                                            <span className={`badge bg-${q.status === 'Answered' ? 'success' : 'warning'} px-2 py-1`}>
+                                                                {q.status === 'Answered' ? 'Resolved / Answered' : 'Pending Admin Response'}
+                                                            </span>
+                                                            <Button 
+                                                                variant="outline-danger" 
+                                                                size="sm" 
+                                                                className="py-0 px-2 rounded-pill shadow-none border-0" 
+                                                                title="Delete Query"
+                                                                onClick={() => handleDeleteQuery(q.id)}
+                                                            >
+                                                                <i className="bi bi-trash3-fill"></i>
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                     <p className="text-light small mb-1" style={{ whiteSpace: 'pre-wrap' }}>{q.message}</p>
                                                     {q.createdAt && (

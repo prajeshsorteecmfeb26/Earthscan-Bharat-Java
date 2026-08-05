@@ -906,6 +906,18 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    if (method === 'DELETE' && pathname.match(/^\/api\/(admin\/)?contact-queries\/([a-zA-Z0-9\-]+)$/)) {
+      const idStr = pathname.split('/').pop();
+      const idx = contactQueries.findIndex(q => String(q.id) === String(idStr));
+      if (idx !== -1) {
+        contactQueries.splice(idx, 1);
+        saveContactQueries();
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ message: 'Deleted successfully' }));
+      return;
+    }
+
     // Admin API
     if (method === 'GET' && pathname === '/api/admin/stats') {
       res.writeHead(200, { 'Content-Type': 'application/json' });

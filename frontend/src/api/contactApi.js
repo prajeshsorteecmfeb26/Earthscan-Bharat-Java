@@ -3,7 +3,8 @@ import api from './client';
 export const contactApi = {
   submitQuery: (data) => api.post('/api/contact', data),
   getQueries: () => api.get('/api/admin/contact-queries'),
-  replyQuery: (id, reply) => api.put(`/api/admin/contact-queries/${id}/reply`, { reply })
+  replyQuery: (id, reply) => api.put(`/api/admin/contact-queries/${id}/reply`, { reply }),
+  deleteQuery: (id) => api.delete(`/api/admin/contact-queries/${id}`)
 };
 
 export default contactApi;
