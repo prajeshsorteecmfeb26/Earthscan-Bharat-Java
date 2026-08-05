@@ -1,0 +1,41 @@
+[
+  {
+    "id": "cq-19fd0832538",
+    "name": "Agriculture Expert",
+    "email": "agricultureexpert@gmail.com",
+    "message": "I am currently supporting farmers  and I am happy with that. Please can you give me my wage.",
+    "status": "Answered",
+    "reply": "It will get processed with in next week.",
+    "createdAt": "2026-08-05T06:01:23.512Z",
+    "repliedAt": "2026-08-05T06:02:29.707Z"
+  },
+  {
+    "id": "cq-19fd0797a3a",
+    "name": "Land Buyer",
+    "email": "landbuyer@gmail.com",
+    "message": "And what is the investment?",
+    "status": "Answered",
+    "reply": "You can start with 25000rs",
+    "createdAt": "2026-08-05T05:50:49.914Z",
+    "repliedAt": "2026-08-05T05:51:43.667Z"
+  },
+  {
+    "id": "cq-19fd073dee9",
+    "name": "Land Buyer",
+    "email": "landbuyer@gmail.com",
+    "message": "Hello, I have a query regarding rice. In which season it should get cultivated?",
+    "status": "Answered",
+    "reply": "Rice needs plenty of water. So, monsoon season is the best option to cultivate it.",
+    "createdAt": "2026-08-05T05:44:42.473Z",
+    "repliedAt": "2026-08-05T05:46:05.493Z"
+  },
+  {
+    "id": "cq-1",
+    "name": "Suresh Patil",
+    "email": "suresh.patil@gmail.com",
+    "message": "Need assistance with soil fertility test report for sugarcane crop in Sangli.",
+    "status": "Pending",
+    "reply": "",
+    "createdAt": "2026-08-04T05:16:23.737Z"
+  }
+]

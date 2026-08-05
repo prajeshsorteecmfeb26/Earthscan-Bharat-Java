@@ -84,3 +84,27 @@ body {
   z-index: 1350 !important;
 }
 
+/* Custom Nav Tabs styling for Dark Theme */
+.nav-tabs {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+.nav-tabs .nav-link {
+  color: var(--text-secondary) !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  font-weight: 600;
+  padding: 0.75rem 1.25rem;
+  cursor: pointer !important;
+}
+.nav-tabs .nav-link:hover {
+  color: var(--text-primary) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+.nav-tabs .nav-link.active {
+  color: #ffffff !important;
+  background-color: rgba(41, 121, 255, 0.2) !important;
+  border-bottom: 2px solid var(--accent-blue) !important;
+  border-radius: 8px 8px 0 0;
+}
+
+

@@ -28,7 +28,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
         let defaultRoute = '/';
         if (userRole === 'Admin') defaultRoute = '/admin';
         else if (userRole === 'Land Buyer') defaultRoute = '/search';
-        else if (userRole === 'Agriculture Expert') defaultRoute = '/expert/queries';
+        else if (userRole === 'Agriculture Expert') defaultRoute = '/expert/manage-crop';
         
         return <Navigate to={defaultRoute} replace />;
     }
