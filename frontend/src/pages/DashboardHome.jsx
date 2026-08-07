@@ -334,41 +334,29 @@ export default function DashboardHome() {
                                             <span className="fw-bold">{surveyData.loading ? <Spinner size="sm" variant="light" /> : (surveyData.soilType || 'Black Cotton Soil')}</span>
                                         </div>
                                         <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.flood_risk')}:</span>
-                                            <span className={`fw-bold ${surveyData.floodRiskVariant}`}>
-                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : t(`dashboard.${surveyData.floodRisk.toLowerCase().replace(' ', '_')}`, surveyData.floodRisk)}
-                                            </span>
-                                        </div>
-                                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.avg_rainfall')}:</span>
-                                            <span className="fw-bold">
-                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : `${surveyData.avgRainfall} ${t('dashboard.mm')}`}
+                                            <span className="text-light">GW Recharge:</span>
+                                            <span className="fw-bold text-success">
+                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : (surveyData.gwRechargeBCM || '44.10 BCM')}
                                             </span>
                                         </div>
                                     </Col>
                                     <Col sm={6}>
                                         <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
                                             <span className="text-light">{t('dashboard.groundwater')}:</span>
-                                            <span className={`fw-bold ${surveyData.groundwaterVariant}`}>
-                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : t(`dashboard.${surveyData.groundwaterStatus.toLowerCase().replace('-', '_').replace(' ', '_')}`, surveyData.groundwaterStatus)}
+                                            <span className={`fw-bold ${surveyData.groundwaterVariant || 'text-success'}`}>
+                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : (surveyData.groundwaterStatusFull || 'Safe (50.0%)')}
                                             </span>
                                         </div>
                                         <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
                                             <span className="text-light">{t('dashboard.borewell_depth')}:</span>
                                             <span className="fw-bold">
-                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : `${surveyData.borewellDepth} ${t('dashboard.meters')}`}
+                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : (surveyData.borewellDepthFeet || '100 - 150 feet')}
                                             </span>
                                         </div>
                                         <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.water_retention')}:</span>
-                                            <span className="fw-bold">
-                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : t(`dashboard.${surveyData.waterRetention.toLowerCase()}`, surveyData.waterRetention)}
-                                            </span>
-                                        </div>
-                                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.soil_drainage')}:</span>
-                                            <span className="fw-bold">
-                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : t(`dashboard.${surveyData.soilDrainage.toLowerCase().replace('-', '_').replace(' ', '_')}`, surveyData.soilDrainage)}
+                                            <span className="text-light">Avg Annual Rainfall:</span>
+                                            <span className="fw-bold" style={{ color: '#00bcd4' }}>
+                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : `${surveyData.avgRainfall || 688} ${t('dashboard.mm')}`}
                                             </span>
                                         </div>
                                     </Col>

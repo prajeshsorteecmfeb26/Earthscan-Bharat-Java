@@ -141,31 +141,51 @@ export async function fetchRegionalSurveyData(lat, lng, locationName = '', addre
         }
     }
 
-    // 5. Determine Groundwater Status & Borewell Depth
-    let groundwaterStatus = 'Semi-Critical';
-    let groundwaterVariant = 'text-warning';
-    let borewellDepth = 120;
+    // 5. Determine Groundwater Status, Percentage, GW Recharge & Borewell Depth
+    let groundwaterStatus = 'Safe';
+    let groundwaterPercentage = '50.0%';
+    let groundwaterVariant = 'text-success';
+    let borewellDepthFeet = '100 - 150 feet';
+    let gwRechargeBCM = '44.10 BCM';
 
-    if (locLower.includes('rajasthan') || locLower.includes('jodhpur') || locLower.includes('bikaner') || annualRainfall < 450) {
+    if (locLower.includes('jalna')) {
+        groundwaterStatus = 'Safe';
+        groundwaterPercentage = '50.0%';
+        groundwaterVariant = 'text-success';
+        borewellDepthFeet = '100 - 150 feet';
+        gwRechargeBCM = '44.10 BCM';
+        annualRainfall = annualRainfall || 688;
+    } else if (locLower.includes('rajasthan') || locLower.includes('jodhpur') || locLower.includes('bikaner') || annualRainfall < 450) {
         groundwaterStatus = 'Over-Exploited';
+        groundwaterPercentage = '118.5%';
         groundwaterVariant = 'text-danger';
-        borewellDepth = Math.round(190 + (Math.abs(lat * 10) % 70));
-    } else if (annualRainfall > 1600 || elevation < 30 || locLower.includes('kerala') || locLower.includes('goa') || locLower.includes('konkan') || locLower.includes('assam')) {
+        borewellDepthFeet = '220 - 320 feet';
+        gwRechargeBCM = '18.40 BCM';
+    } else if (annualRainfall > 1600 || elevation < 30 || locLower.includes('kerala') || locLower.includes('goa') || locLower.includes('konkan') || locLower.includes('mumbai') || locLower.includes('ratnagiri')) {
         groundwaterStatus = 'Safe';
+        groundwaterPercentage = '42.0%';
         groundwaterVariant = 'text-success';
-        borewellDepth = Math.round(35 + (elevation * 0.3) + (Math.abs(lng * 10) % 25));
-    } else if (annualRainfall > 950 || locLower.includes('ganga') || locLower.includes('uttar pradesh') || locLower.includes('bihar')) {
+        borewellDepthFeet = '40 - 75 feet';
+        gwRechargeBCM = '112.50 BCM';
+    } else if (annualRainfall > 950 || locLower.includes('ganga') || locLower.includes('uttar pradesh') || locLower.includes('bihar') || locLower.includes('nagpur')) {
         groundwaterStatus = 'Safe';
+        groundwaterPercentage = '48.5%';
         groundwaterVariant = 'text-success';
-        borewellDepth = Math.round(65 + (Math.abs(lat * 10) % 30));
-    } else if (annualRainfall < 700 || locLower.includes('bangalore') || locLower.includes('hyderabad') || locLower.includes('anantapur') || locLower.includes('chennai')) {
+        borewellDepthFeet = '80 - 130 feet';
+        gwRechargeBCM = '58.20 BCM';
+    } else if (annualRainfall < 700 || locLower.includes('bangalore') || locLower.includes('hyderabad') || locLower.includes('anantapur') || locLower.includes('chennai') || locLower.includes('delhi')) {
         groundwaterStatus = 'Critical';
+        groundwaterPercentage = '85.2%';
         groundwaterVariant = 'text-warning';
-        borewellDepth = Math.round(155 + (Math.abs(lng * 10) % 55));
+        borewellDepthFeet = '160 - 240 feet';
+        gwRechargeBCM = '32.50 BCM';
     } else {
+        // Semi-Critical Deccan basalt baseline (e.g. Pune, Satara, Solapur)
         groundwaterStatus = 'Semi-Critical';
+        groundwaterPercentage = '68.4%';
         groundwaterVariant = 'text-warning';
-        borewellDepth = Math.round(110 + (Math.abs(lat * 7) % 35));
+        borewellDepthFeet = '120 - 180 feet';
+        gwRechargeBCM = '65.40 BCM';
     }
 
     // 6. Determine Flood Risk Level
@@ -183,16 +203,22 @@ export async function fetchRegionalSurveyData(lat, lng, locationName = '', addre
         floodRiskVariant = 'text-success';
     }
 
+    const calculatedRainfall = Math.max(250, annualRainfall);
+
     return {
         soilType,
         groundwaterStatus,
+        groundwaterPercentage,
+        groundwaterStatusFull: `${groundwaterStatus} (${groundwaterPercentage})`,
         groundwaterVariant,
-        borewellDepth,
+        borewellDepthFeet,
+        gwRechargeBCM,
         floodRisk,
         floodRiskVariant,
-        avgRainfall: Math.max(250, annualRainfall),
+        avgRainfall: calculatedRainfall,
         waterRetention,
         soilDrainage,
         elevation
     };
 }
+
