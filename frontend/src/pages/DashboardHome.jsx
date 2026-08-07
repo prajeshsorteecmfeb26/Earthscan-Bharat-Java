@@ -8,7 +8,7 @@ import html2pdf from 'html2pdf.js';
 import InsightsFooter from '../components/InsightsFooter';
 import { SavedSearchContext } from '../context/SavedSearchContext';
 import { useTranslation } from 'react-i18next';
-import { fetchRegionalSurveyData } from '../utils/regionalSurveyUtils';
+import { getInstantRegionalSurveyData, fetchRegionalSurveyData } from '../utils/regionalSurveyUtils';
 
 // Fix for default marker icon in react-leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -71,12 +71,10 @@ async function geocodeCity(query) {
 
 // Multi-tiered PIN code fetcher using accurate web APIs
 async function fetchAccuratePinCode(lat, lon, query, addressData) {
-    // Tier 1: Check Nominatim search address details
     if (addressData?.postcode) {
         return addressData.postcode;
     }
 
-    // Tier 2: Nominatim Reverse Geocoding
     try {
         const revUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
         const revRes = await fetch(revUrl, { headers: { 'Accept-Language': 'en', 'User-Agent': 'EarthScanBharat/1.0' } });
@@ -88,7 +86,6 @@ async function fetchAccuratePinCode(lat, lon, query, addressData) {
         console.warn('Nominatim reverse lookup failed:', e);
     }
 
-    // Tier 3: India Postal Pincode API (filtered by District & State)
     try {
         const cleanQuery = query.split(',')[0].trim();
         const address = addressData || {};
@@ -116,7 +113,6 @@ async function fetchAccuratePinCode(lat, lon, query, addressData) {
         console.warn('India Post API lookup failed:', e);
     }
 
-    // Tier 4: BigDataCloud Reverse Geocoding API
     try {
         const bdcUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
         const bdcRes = await fetch(bdcUrl);
@@ -157,18 +153,7 @@ export default function DashboardHome() {
     const [coords, setCoords] = useState({ lat: 18.5204, lng: 73.8567 });
     const [weather, setWeather] = useState(null);
     const [weatherLoading, setWeatherLoading] = useState(true);
-    const [surveyData, setSurveyData] = useState({
-        soilType: 'Black Cotton Soil',
-        groundwaterStatus: 'Semi-Critical',
-        groundwaterVariant: 'text-warning',
-        borewellDepth: 120,
-        floodRisk: 'Low',
-        floodRiskVariant: 'text-success',
-        avgRainfall: 740,
-        waterRetention: 'High',
-        soilDrainage: 'Moderate',
-        loading: false
-    });
+    const [surveyData, setSurveyData] = useState(() => getInstantRegionalSurveyData('Pune'));
 
     const reportRef = useRef();
     const { addSavedSearch } = React.useContext(SavedSearchContext);
@@ -194,25 +179,25 @@ export default function DashboardHome() {
     }
 
     async function loadSurveyData(lat, lng, locName = '', addressObj = {}) {
-        setSurveyData(prev => ({ ...prev, loading: true }));
+        // Step 1: Immediately set 0ms instant baseline values!
+        const instant = getInstantRegionalSurveyData(locName);
+        setSurveyData({
+            ...instant,
+            loading: false
+        });
+        setSoilType(instant.soilType);
+
+        // Step 2: Refine in background asynchronously
         try {
             const data = await fetchRegionalSurveyData(lat, lng, locName, addressObj);
-            setSurveyData({
-                soilType: data.soilType,
-                groundwaterStatus: data.groundwaterStatus,
-                groundwaterVariant: data.groundwaterVariant,
-                borewellDepth: data.borewellDepth,
-                floodRisk: data.floodRisk,
-                floodRiskVariant: data.floodRiskVariant,
-                avgRainfall: data.avgRainfall,
-                waterRetention: data.waterRetention,
-                soilDrainage: data.soilDrainage,
+            setSurveyData(prev => ({
+                ...prev,
+                ...data,
                 loading: false
-            });
+            }));
             setSoilType(data.soilType);
         } catch (err) {
-            console.error('Regional survey fetch failed:', err);
-            setSurveyData(prev => ({ ...prev, loading: false }));
+            // Baseline is already set
         }
     }
 

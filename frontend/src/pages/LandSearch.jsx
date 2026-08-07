@@ -7,7 +7,7 @@ import html2pdf from 'html2pdf.js';
 import { landApi } from '../api/landApi';
 import { extractErrorMessage } from '../api/client';
 import { geocodeCity, fetchAccuratePinCode } from '../utils/locationUtils';
-import { fetchRegionalSurveyData } from '../utils/regionalSurveyUtils';
+import { getInstantRegionalSurveyData, fetchRegionalSurveyData } from '../utils/regionalSurveyUtils';
 
 /**
  * Derives the badge list the card renders from real listing attributes.
@@ -60,15 +60,7 @@ export default function LandSearch() {
 
     const [surveyLocationName, setSurveyLocationName] = useState('Jalna, Maharashtra');
     const [pinCode, setPinCode] = useState('431203');
-    const [surveyData, setSurveyData] = useState({
-        soilType: 'Black Cotton Soil',
-        groundwaterStatusFull: 'Safe (50.0%)',
-        groundwaterVariant: 'text-success',
-        borewellDepthFeet: '100 - 150 feet',
-        gwRechargeBCM: '44.10 BCM',
-        avgRainfall: 688,
-        loading: false
-    });
+    const [surveyData, setSurveyData] = useState(() => getInstantRegionalSurveyData('Jalna'));
     const reportRef = useRef();
 
     const [lands, setLands] = useState([]);
@@ -81,45 +73,39 @@ export default function LandSearch() {
 
     const loadSurveyForCity = useCallback(async (targetCity) => {
         const queryCity = (targetCity && targetCity !== 'All') ? targetCity : 'Jalna';
-        setSurveyData(prev => ({ ...prev, loading: true }));
+        
+        // Step 1: Render 0ms instant regional baseline values immediately!
+        const instant = getInstantRegionalSurveyData(queryCity);
+        const displayName = queryCity.includes(',') ? queryCity : `${queryCity}, Maharashtra`;
+        setSurveyLocationName(displayName);
+        if (instant.pinCode) {
+            setPinCode(instant.pinCode);
+        }
+        setSurveyData({
+            ...instant,
+            loading: false
+        });
+
+        // Step 2: Asynchronously refine in background without blocking UI
         try {
             const geo = await geocodeCity(queryCity);
-            let lat = 19.8347;
-            let lon = 75.8816;
-            let cleanName = queryCity.includes(',') ? queryCity : `${queryCity}, Maharashtra`;
-            let addressObj = {};
-
             if (geo) {
-                lat = geo.lat;
-                lon = geo.lon;
                 const parts = geo.displayName.split(',');
-                cleanName = parts.slice(0, 2).join(',').trim();
-                addressObj = geo.address || {};
+                const cleanName = parts.slice(0, 2).join(',').trim();
+                setSurveyLocationName(cleanName);
+                const resolvedPin = await fetchAccuratePinCode(geo.lat, geo.lon, queryCity, geo.address);
+                if (resolvedPin && resolvedPin !== 'N/A') {
+                    setPinCode(resolvedPin);
+                }
+                const refined = await fetchRegionalSurveyData(geo.lat, geo.lon, cleanName, geo.address);
+                setSurveyData(prev => ({
+                    ...prev,
+                    ...refined,
+                    loading: false
+                }));
             }
-
-            setSurveyLocationName(cleanName);
-            const resolvedPin = await fetchAccuratePinCode(lat, lon, queryCity, addressObj);
-            if (resolvedPin && resolvedPin !== 'N/A') {
-                setPinCode(resolvedPin);
-            } else if (queryCity.toLowerCase().includes('jalna')) {
-                setPinCode('431203');
-            } else if (queryCity.toLowerCase().includes('pune')) {
-                setPinCode('411001');
-            }
-
-            const data = await fetchRegionalSurveyData(lat, lon, cleanName, addressObj);
-            setSurveyData({
-                soilType: data.soilType,
-                groundwaterStatusFull: data.groundwaterStatusFull || `${data.groundwaterStatus} (${data.groundwaterPercentage || '50.0%'})`,
-                groundwaterVariant: data.groundwaterVariant || 'text-success',
-                borewellDepthFeet: data.borewellDepthFeet || '100 - 150 feet',
-                gwRechargeBCM: data.gwRechargeBCM || '44.10 BCM',
-                avgRainfall: data.avgRainfall || 688,
-                loading: false
-            });
         } catch (err) {
-            console.warn('Regional survey fetch failed:', err);
-            setSurveyData(prev => ({ ...prev, loading: false }));
+            // Ignore error since instant baseline is already displayed
         }
     }, []);
 
@@ -127,7 +113,7 @@ export default function LandSearch() {
         const timer = setTimeout(() => {
             const target = (filterCity && filterCity !== 'All') ? filterCity : (searchTerm.trim() || 'Jalna');
             loadSurveyForCity(target);
-        }, 300);
+        }, 50);
         return () => clearTimeout(timer);
     }, [filterCity, searchTerm, loadSurveyForCity]);
 
