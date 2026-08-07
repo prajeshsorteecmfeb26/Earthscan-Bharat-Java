@@ -8,7 +8,7 @@ import html2pdf from 'html2pdf.js';
 import InsightsFooter from '../components/InsightsFooter';
 import { SavedSearchContext } from '../context/SavedSearchContext';
 import { useTranslation } from 'react-i18next';
-import { fetchRegionalSurveyData } from '../utils/regionalSurveyUtils';
+import { getInstantRegionalSurveyData, fetchRegionalSurveyData } from '../utils/regionalSurveyUtils';
 
 // Fix for default marker icon in react-leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -71,12 +71,10 @@ async function geocodeCity(query) {
 
 // Multi-tiered PIN code fetcher using accurate web APIs
 async function fetchAccuratePinCode(lat, lon, query, addressData) {
-    // Tier 1: Check Nominatim search address details
     if (addressData?.postcode) {
         return addressData.postcode;
     }
 
-    // Tier 2: Nominatim Reverse Geocoding
     try {
         const revUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
         const revRes = await fetch(revUrl, { headers: { 'Accept-Language': 'en', 'User-Agent': 'EarthScanBharat/1.0' } });
@@ -88,7 +86,6 @@ async function fetchAccuratePinCode(lat, lon, query, addressData) {
         console.warn('Nominatim reverse lookup failed:', e);
     }
 
-    // Tier 3: India Postal Pincode API (filtered by District & State)
     try {
         const cleanQuery = query.split(',')[0].trim();
         const address = addressData || {};
@@ -116,7 +113,6 @@ async function fetchAccuratePinCode(lat, lon, query, addressData) {
         console.warn('India Post API lookup failed:', e);
     }
 
-    // Tier 4: BigDataCloud Reverse Geocoding API
     try {
         const bdcUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
         const bdcRes = await fetch(bdcUrl);
@@ -157,18 +153,7 @@ export default function DashboardHome() {
     const [coords, setCoords] = useState({ lat: 18.5204, lng: 73.8567 });
     const [weather, setWeather] = useState(null);
     const [weatherLoading, setWeatherLoading] = useState(true);
-    const [surveyData, setSurveyData] = useState({
-        soilType: 'Black Cotton Soil',
-        groundwaterStatus: 'Semi-Critical',
-        groundwaterVariant: 'text-warning',
-        borewellDepth: 120,
-        floodRisk: 'Low',
-        floodRiskVariant: 'text-success',
-        avgRainfall: 740,
-        waterRetention: 'High',
-        soilDrainage: 'Moderate',
-        loading: false
-    });
+    const [surveyData, setSurveyData] = useState(() => getInstantRegionalSurveyData('Pune'));
 
     const reportRef = useRef();
     const { addSavedSearch } = React.useContext(SavedSearchContext);
@@ -194,25 +179,25 @@ export default function DashboardHome() {
     }
 
     async function loadSurveyData(lat, lng, locName = '', addressObj = {}) {
-        setSurveyData(prev => ({ ...prev, loading: true }));
+        // Step 1: Immediately set 0ms instant baseline values!
+        const instant = getInstantRegionalSurveyData(locName);
+        setSurveyData({
+            ...instant,
+            loading: false
+        });
+        setSoilType(instant.soilType);
+
+        // Step 2: Refine in background asynchronously
         try {
             const data = await fetchRegionalSurveyData(lat, lng, locName, addressObj);
-            setSurveyData({
-                soilType: data.soilType,
-                groundwaterStatus: data.groundwaterStatus,
-                groundwaterVariant: data.groundwaterVariant,
-                borewellDepth: data.borewellDepth,
-                floodRisk: data.floodRisk,
-                floodRiskVariant: data.floodRiskVariant,
-                avgRainfall: data.avgRainfall,
-                waterRetention: data.waterRetention,
-                soilDrainage: data.soilDrainage,
+            setSurveyData(prev => ({
+                ...prev,
+                ...data,
                 loading: false
-            });
+            }));
             setSoilType(data.soilType);
         } catch (err) {
-            console.error('Regional survey fetch failed:', err);
-            setSurveyData(prev => ({ ...prev, loading: false }));
+            // Baseline is already set
         }
     }
 
@@ -323,52 +308,40 @@ export default function DashboardHome() {
                                     </div>
                                 </div>
                                 
-                                <Row className="g-3">
-                                    <Col sm={6}>
-                                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.pin_code')}:</span>
-                                            <span className="fw-bold">{pinCode}</span>
+                                <Row className="g-4 py-3 flex-grow-1">
+                                    <Col sm={6} className="d-flex flex-column justify-content-between">
+                                        <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                            <span className="text-light fs-6">{t('dashboard.pin_code')}:</span>
+                                            <span className="fw-bold fs-5">{pinCode}</span>
                                         </div>
-                                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.soil_type')}:</span>
-                                            <span className="fw-bold">{surveyData.loading ? <Spinner size="sm" variant="light" /> : (surveyData.soilType || 'Black Cotton Soil')}</span>
+                                        <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                            <span className="text-light fs-6">{t('dashboard.soil_type')}:</span>
+                                            <span className="fw-bold fs-6">{surveyData.soilType || 'Black Cotton Soil'}</span>
                                         </div>
-                                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.flood_risk')}:</span>
-                                            <span className={`fw-bold ${surveyData.floodRiskVariant}`}>
-                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : t(`dashboard.${surveyData.floodRisk.toLowerCase().replace(' ', '_')}`, surveyData.floodRisk)}
-                                            </span>
-                                        </div>
-                                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.avg_rainfall')}:</span>
-                                            <span className="fw-bold">
-                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : `${surveyData.avgRainfall} ${t('dashboard.mm')}`}
+                                        <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                            <span className="text-light fs-6">GW Recharge:</span>
+                                            <span className="fw-bold fs-6 text-success">
+                                                {surveyData.gwRechargeBCM || '44.10 BCM'}
                                             </span>
                                         </div>
                                     </Col>
-                                    <Col sm={6}>
-                                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.groundwater')}:</span>
-                                            <span className={`fw-bold ${surveyData.groundwaterVariant}`}>
-                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : t(`dashboard.${surveyData.groundwaterStatus.toLowerCase().replace('-', '_').replace(' ', '_')}`, surveyData.groundwaterStatus)}
+                                    <Col sm={6} className="d-flex flex-column justify-content-between">
+                                        <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                            <span className="text-light fs-6">{t('dashboard.groundwater')}:</span>
+                                            <span className={`fw-bold fs-6 ${surveyData.groundwaterVariant || 'text-success'}`}>
+                                                {surveyData.groundwaterStatusFull || 'Safe (50.0%)'}
                                             </span>
                                         </div>
-                                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.borewell_depth')}:</span>
-                                            <span className="fw-bold">
-                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : `${surveyData.borewellDepth} ${t('dashboard.meters')}`}
+                                        <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                            <span className="text-light fs-6">{t('dashboard.borewell_depth')}:</span>
+                                            <span className="fw-bold fs-6">
+                                                {surveyData.borewellDepthFeet || '100 - 150 feet'}
                                             </span>
                                         </div>
-                                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.water_retention')}:</span>
-                                            <span className="fw-bold">
-                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : t(`dashboard.${surveyData.waterRetention.toLowerCase()}`, surveyData.waterRetention)}
-                                            </span>
-                                        </div>
-                                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.soil_drainage')}:</span>
-                                            <span className="fw-bold">
-                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : t(`dashboard.${surveyData.soilDrainage.toLowerCase().replace('-', '_').replace(' ', '_')}`, surveyData.soilDrainage)}
+                                        <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                            <span className="text-light fs-6">Avg Annual Rainfall:</span>
+                                            <span className="fw-bold fs-6" style={{ color: '#00bcd4' }}>
+                                                {`${surveyData.avgRainfall || 688} ${t('dashboard.mm')}`}
                                             </span>
                                         </div>
                                     </Col>

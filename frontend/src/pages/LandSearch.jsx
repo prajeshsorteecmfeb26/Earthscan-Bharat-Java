@@ -1,10 +1,13 @@
-import React, { useState, useContext, useEffect, useCallback } from 'react';
+import React, { useState, useContext, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Form, InputGroup, Button, Badge, Spinner, Alert } from 'react-bootstrap';
 import { SavedSearchContext } from '../context/SavedSearchContext';
 import { useTranslation } from 'react-i18next';
+import html2pdf from 'html2pdf.js';
 import { landApi } from '../api/landApi';
 import { extractErrorMessage } from '../api/client';
+import { geocodeCity, fetchAccuratePinCode } from '../utils/locationUtils';
+import { getInstantRegionalSurveyData, fetchRegionalSurveyData } from '../utils/regionalSurveyUtils';
 
 /**
  * Derives the badge list the card renders from real listing attributes.
@@ -55,6 +58,11 @@ export default function LandSearch() {
     const [verifiedOnly, setVerifiedOnly] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
 
+    const [surveyLocationName, setSurveyLocationName] = useState('Jalna, Maharashtra');
+    const [pinCode, setPinCode] = useState('431203');
+    const [surveyData, setSurveyData] = useState(() => getInstantRegionalSurveyData('Jalna'));
+    const reportRef = useRef();
+
     const [lands, setLands] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -62,6 +70,71 @@ export default function LandSearch() {
     const navigate = useNavigate();
     const { addSavedSearch } = useContext(SavedSearchContext);
     const { t } = useTranslation();
+
+    const loadSurveyForCity = useCallback(async (targetCity) => {
+        const queryCity = (targetCity && targetCity !== 'All') ? targetCity : 'Jalna';
+        
+        // Step 1: Render 0ms instant regional baseline values immediately!
+        const instant = getInstantRegionalSurveyData(queryCity);
+        const displayName = queryCity.includes(',') ? queryCity : `${queryCity}, Maharashtra`;
+        setSurveyLocationName(displayName);
+        if (instant.pinCode) {
+            setPinCode(instant.pinCode);
+        }
+        setSurveyData({
+            ...instant,
+            loading: false
+        });
+
+        // Step 2: Asynchronously refine in background without blocking UI
+        try {
+            const geo = await geocodeCity(queryCity);
+            if (geo) {
+                const parts = geo.displayName.split(',');
+                const cleanName = parts.slice(0, 2).join(',').trim();
+                setSurveyLocationName(cleanName);
+                const resolvedPin = await fetchAccuratePinCode(geo.lat, geo.lon, queryCity, geo.address);
+                if (resolvedPin && resolvedPin !== 'N/A') {
+                    setPinCode(resolvedPin);
+                }
+                const refined = await fetchRegionalSurveyData(geo.lat, geo.lon, cleanName, geo.address);
+                setSurveyData(prev => ({
+                    ...prev,
+                    ...refined,
+                    loading: false
+                }));
+            }
+        } catch (err) {
+            // Ignore error since instant baseline is already displayed
+        }
+    }, []);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            const target = (filterCity && filterCity !== 'All') ? filterCity : (searchTerm.trim() || 'Jalna');
+            loadSurveyForCity(target);
+        }, 50);
+        return () => clearTimeout(timer);
+    }, [filterCity, searchTerm, loadSurveyForCity]);
+
+    const handleGeneratePDF = () => {
+        const element = reportRef.current;
+        if (!element) return;
+        const opt = {
+            margin:       10,
+            filename:     `Regional_Survey_${surveyLocationName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+
+        const buttons = element.querySelectorAll('.pdf-exclude');
+        buttons.forEach(btn => btn.style.display = 'none');
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            buttons.forEach(btn => btn.style.display = '');
+        });
+    };
 
     const fetchLands = useCallback(async (signal) => {
         setLoading(true);
@@ -119,8 +192,6 @@ export default function LandSearch() {
             soil: land.soil,
             landId: land.id,
         });
-        // Report what actually happened rather than assuming success, which is what the previous
-        // localStorage-only version could get away with.
         if (result?.alreadySaved) {
             alert('This property is already in your shortlist.');
         } else if (result?.success) {
@@ -145,7 +216,6 @@ export default function LandSearch() {
         navigate('/buyer/compare');
     };
 
-    // Filtering now happens in SQL via the specification API, so the client just renders results.
     const filteredLands = lands;
 
     const formatPrice = (price) => {
@@ -315,6 +385,68 @@ export default function LandSearch() {
                             </Row>
                         </div>
                     )}
+                </Card.Body>
+            </Card>
+
+            {/* Regional Survey Card - Matches Uploaded Screenshot */}
+            <Card className="glass-panel border-0 text-white mb-4 shadow-sm" ref={reportRef}>
+                <Card.Body className="p-4">
+                    <div className="d-flex justify-content-between align-items-center mb-4">
+                        <h4 className="mb-0 fw-bold d-flex align-items-center gap-2">
+                            <i className="bi bi-geo-alt-fill text-danger"></i> 
+                            Regional Survey: {surveyLocationName}
+                        </h4>
+                        <div className="d-flex gap-2 pdf-exclude">
+                            <Button 
+                                variant="outline-light" 
+                                size="sm" 
+                                onClick={handleGeneratePDF} 
+                                className="rounded-pill px-3 py-1 text-nowrap d-flex align-items-center gap-1_5 border-secondary text-white hover-white"
+                                style={{ fontSize: '0.85rem', fontWeight: 500 }}
+                            >
+                                <i className="bi bi-file-earmark-pdf-fill text-danger me-1"></i> Export PDF Report
+                            </Button>
+                        </div>
+                    </div>
+                    
+                    <Row className="g-4 py-3 flex-grow-1">
+                        <Col sm={6} className="d-flex flex-column justify-content-between">
+                            <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                <span className="text-light fs-6">PIN Code:</span>
+                                <span className="fw-bold fs-5">{pinCode}</span>
+                            </div>
+                            <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                <span className="text-light fs-6">Soil Type:</span>
+                                <span className="fw-bold fs-6">{surveyData.soilType || 'Black Cotton Soil'}</span>
+                            </div>
+                            <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                <span className="text-light fs-6">GW Recharge:</span>
+                                <span className="fw-bold fs-6 text-success">
+                                    {surveyData.gwRechargeBCM || '44.10 BCM'}
+                                </span>
+                            </div>
+                        </Col>
+                        <Col sm={6} className="d-flex flex-column justify-content-between">
+                            <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                <span className="text-light fs-6">Groundwater Status:</span>
+                                <span className={`fw-bold fs-6 ${surveyData.groundwaterVariant || 'text-success'}`}>
+                                    {surveyData.groundwaterStatusFull || 'Safe (50.0%)'}
+                                </span>
+                            </div>
+                            <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                <span className="text-light fs-6">Average Borewell Depth:</span>
+                                <span className="fw-bold fs-6">
+                                    {surveyData.borewellDepthFeet || '100 - 150 feet'}
+                                </span>
+                            </div>
+                            <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                <span className="text-light fs-6">Avg Annual Rainfall:</span>
+                                <span className="fw-bold fs-6" style={{ color: '#00bcd4' }}>
+                                    {`${surveyData.avgRainfall || 688} mm`}
+                                </span>
+                            </div>
+                        </Col>
+                    </Row>
                 </Card.Body>
             </Card>
 
