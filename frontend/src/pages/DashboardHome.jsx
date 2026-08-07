@@ -8,6 +8,7 @@ import html2pdf from 'html2pdf.js';
 import InsightsFooter from '../components/InsightsFooter';
 import { SavedSearchContext } from '../context/SavedSearchContext';
 import { useTranslation } from 'react-i18next';
+import { fetchRegionalSurveyData } from '../utils/regionalSurveyUtils';
 
 // Fix for default marker icon in react-leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -156,14 +157,27 @@ export default function DashboardHome() {
     const [coords, setCoords] = useState({ lat: 18.5204, lng: 73.8567 });
     const [weather, setWeather] = useState(null);
     const [weatherLoading, setWeatherLoading] = useState(true);
+    const [surveyData, setSurveyData] = useState({
+        soilType: 'Black Cotton Soil',
+        groundwaterStatus: 'Semi-Critical',
+        groundwaterVariant: 'text-warning',
+        borewellDepth: 120,
+        floodRisk: 'Low',
+        floodRiskVariant: 'text-success',
+        avgRainfall: 740,
+        waterRetention: 'High',
+        soilDrainage: 'Moderate',
+        loading: false
+    });
+
     const reportRef = useRef();
     const { addSavedSearch } = React.useContext(SavedSearchContext);
     const { t } = useTranslation();
 
-    // Initial load: fetch weather for default city (Pune)
+    // Initial load: fetch weather and regional survey for default city (Pune)
     useEffect(() => {
-        setSoilType(t('dashboard.soil_type') === 'Soil Type' ? 'Black Soil' : t('dashboard.soil_type'));
-        loadWeather(coords.lat, coords.lng).finally(() => setLoading(false));
+        loadWeather(coords.lat, coords.lng);
+        loadSurveyData(coords.lat, coords.lng, 'Pune, Maharashtra', { state: 'Maharashtra' }).finally(() => setLoading(false));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [t]);
 
@@ -179,6 +193,29 @@ export default function DashboardHome() {
         }
     }
 
+    async function loadSurveyData(lat, lng, locName = '', addressObj = {}) {
+        setSurveyData(prev => ({ ...prev, loading: true }));
+        try {
+            const data = await fetchRegionalSurveyData(lat, lng, locName, addressObj);
+            setSurveyData({
+                soilType: data.soilType,
+                groundwaterStatus: data.groundwaterStatus,
+                groundwaterVariant: data.groundwaterVariant,
+                borewellDepth: data.borewellDepth,
+                floodRisk: data.floodRisk,
+                floodRiskVariant: data.floodRiskVariant,
+                avgRainfall: data.avgRainfall,
+                waterRetention: data.waterRetention,
+                soilDrainage: data.soilDrainage,
+                loading: false
+            });
+            setSoilType(data.soilType);
+        } catch (err) {
+            console.error('Regional survey fetch failed:', err);
+            setSurveyData(prev => ({ ...prev, loading: false }));
+        }
+    }
+
     const handleSearch = async (e) => {
         e.preventDefault();
         if (!searchQuery.trim()) return;
@@ -189,13 +226,17 @@ export default function DashboardHome() {
             const geo = await geocodeCity(searchQuery);
             if (geo) {
                 setCoords({ lat: geo.lat, lng: geo.lon });
-                // Use a cleaner display name (first two comma parts)
                 const parts = geo.displayName.split(',');
                 const cleanName = parts.slice(0, 2).join(',').trim();
                 setLocationName(cleanName);
-                const resolvedPin = await fetchAccuratePinCode(geo.lat, geo.lon, searchQuery, geo.address);
+
+                const pinPromise = fetchAccuratePinCode(geo.lat, geo.lon, searchQuery, geo.address);
+                const weatherPromise = loadWeather(geo.lat, geo.lon);
+                const surveyPromise = loadSurveyData(geo.lat, geo.lon, cleanName, geo.address);
+
+                const resolvedPin = await pinPromise;
                 setPinCode(resolvedPin);
-                await loadWeather(geo.lat, geo.lon);
+                await Promise.all([weatherPromise, surveyPromise]);
             } else {
                 alert('Location not found. Please try a different search term.');
             }
@@ -205,7 +246,6 @@ export default function DashboardHome() {
             setLoading(false);
         }
     };
-
 
     const handleGeneratePDF = () => {
         const element = reportRef.current;
@@ -291,33 +331,45 @@ export default function DashboardHome() {
                                         </div>
                                         <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
                                             <span className="text-light">{t('dashboard.soil_type')}:</span>
-                                            <span className="fw-bold">{soilType || 'Black Soil'}</span>
+                                            <span className="fw-bold">{surveyData.loading ? <Spinner size="sm" variant="light" /> : (surveyData.soilType || 'Black Cotton Soil')}</span>
                                         </div>
                                         <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
                                             <span className="text-light">{t('dashboard.flood_risk')}:</span>
-                                            <span className="fw-bold text-success">{t('dashboard.low')}</span>
+                                            <span className={`fw-bold ${surveyData.floodRiskVariant}`}>
+                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : t(`dashboard.${surveyData.floodRisk.toLowerCase().replace(' ', '_')}`, surveyData.floodRisk)}
+                                            </span>
                                         </div>
                                         <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
                                             <span className="text-light">{t('dashboard.avg_rainfall')}:</span>
-                                            <span className="fw-bold">700 {t('dashboard.mm')}</span>
+                                            <span className="fw-bold">
+                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : `${surveyData.avgRainfall} ${t('dashboard.mm')}`}
+                                            </span>
                                         </div>
                                     </Col>
                                     <Col sm={6}>
                                         <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
                                             <span className="text-light">{t('dashboard.groundwater')}:</span>
-                                            <span className="fw-bold text-warning">{t('dashboard.semi_critical')}</span>
+                                            <span className={`fw-bold ${surveyData.groundwaterVariant}`}>
+                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : t(`dashboard.${surveyData.groundwaterStatus.toLowerCase().replace('-', '_').replace(' ', '_')}`, surveyData.groundwaterStatus)}
+                                            </span>
                                         </div>
                                         <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
                                             <span className="text-light">{t('dashboard.borewell_depth')}:</span>
-                                            <span className="fw-bold">120 {t('dashboard.meters')}</span>
+                                            <span className="fw-bold">
+                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : `${surveyData.borewellDepth} ${t('dashboard.meters')}`}
+                                            </span>
                                         </div>
                                         <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
                                             <span className="text-light">{t('dashboard.water_retention')}:</span>
-                                            <span className="fw-bold">{t('dashboard.high')}</span>
+                                            <span className="fw-bold">
+                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : t(`dashboard.${surveyData.waterRetention.toLowerCase()}`, surveyData.waterRetention)}
+                                            </span>
                                         </div>
                                         <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
                                             <span className="text-light">{t('dashboard.soil_drainage')}:</span>
-                                            <span className="fw-bold">{t('dashboard.moderate')}</span>
+                                            <span className="fw-bold">
+                                                {surveyData.loading ? <Spinner size="sm" variant="light" /> : t(`dashboard.${surveyData.soilDrainage.toLowerCase().replace('-', '_').replace(' ', '_')}`, surveyData.soilDrainage)}
+                                            </span>
                                         </div>
                                     </Col>
                                 </Row>
