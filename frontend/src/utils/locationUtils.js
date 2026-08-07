@@ -105,3 +105,84 @@ export async function fetchPinByPlace(city, area) {
 
     return null;
 }
+
+// Geocode city name → { lat, lon, displayName, address } via Nominatim (free, no key required)
+export async function geocodeCity(query) {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=1`;
+    try {
+        const res = await fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'EarthScanBharat/1.0' } });
+        const data = await res.json();
+        if (data && data.length > 0) {
+            return {
+                lat: parseFloat(data[0].lat),
+                lon: parseFloat(data[0].lon),
+                displayName: data[0].display_name,
+                address: data[0].address
+            };
+        }
+    } catch (e) {
+        console.warn('Geocoding failed:', e);
+    }
+    return null;
+}
+
+// Multi-tiered PIN code fetcher using accurate web APIs
+export async function fetchAccuratePinCode(lat, lon, query = '', addressData = {}) {
+    if (addressData?.postcode) {
+        return addressData.postcode;
+    }
+
+    try {
+        const revUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
+        const revRes = await fetch(revUrl, { headers: { 'Accept-Language': 'en', 'User-Agent': 'EarthScanBharat/1.0' } });
+        const revData = await revRes.json();
+        if (revData?.address?.postcode) {
+            return revData.address.postcode;
+        }
+    } catch (e) {
+        console.warn('Nominatim reverse lookup failed:', e);
+    }
+
+    try {
+        const cleanQuery = (query || '').split(',')[0].trim();
+        const address = addressData || {};
+        const district = (address.state_district || address.county || address.city || address.town || cleanQuery).toLowerCase();
+        const state = (address.state || '').toLowerCase();
+
+        if (cleanQuery) {
+            const postUrl = `https://api.postalpincode.in/postoffice/${encodeURIComponent(cleanQuery)}`;
+            const postRes = await fetch(postUrl);
+            const postData = await postRes.json();
+
+            if (postData && postData[0]?.Status === 'Success' && postData[0]?.PostOffice?.length > 0) {
+                const offices = postData[0].PostOffice;
+                let match = offices.find(po => po.District.toLowerCase() === district);
+                if (!match) {
+                    match = offices.find(po => po.District.toLowerCase().includes(district) || district.includes(po.District.toLowerCase()));
+                }
+                if (!match && state) {
+                    match = offices.find(po => po.State.toLowerCase() === state);
+                }
+                if (match?.Pincode) {
+                    return match.Pincode;
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('India Post API lookup failed:', e);
+    }
+
+    try {
+        const bdcUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
+        const bdcRes = await fetch(bdcUrl);
+        const bdcData = await bdcRes.json();
+        if (bdcData?.postcode) {
+            return bdcData.postcode;
+        }
+    } catch (e) {
+        console.warn('BigDataCloud API lookup failed:', e);
+    }
+
+    return 'N/A';
+}
+

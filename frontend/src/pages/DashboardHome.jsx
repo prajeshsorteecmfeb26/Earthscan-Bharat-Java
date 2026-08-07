@@ -8,6 +8,7 @@ import html2pdf from 'html2pdf.js';
 import InsightsFooter from '../components/InsightsFooter';
 import { SavedSearchContext } from '../context/SavedSearchContext';
 import { useTranslation } from 'react-i18next';
+import { getInstantRegionalSurveyData, fetchRegionalSurveyData } from '../utils/regionalSurveyUtils';
 
 // Fix for default marker icon in react-leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -70,12 +71,10 @@ async function geocodeCity(query) {
 
 // Multi-tiered PIN code fetcher using accurate web APIs
 async function fetchAccuratePinCode(lat, lon, query, addressData) {
-    // Tier 1: Check Nominatim search address details
     if (addressData?.postcode) {
         return addressData.postcode;
     }
 
-    // Tier 2: Nominatim Reverse Geocoding
     try {
         const revUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
         const revRes = await fetch(revUrl, { headers: { 'Accept-Language': 'en', 'User-Agent': 'EarthScanBharat/1.0' } });
@@ -87,7 +86,6 @@ async function fetchAccuratePinCode(lat, lon, query, addressData) {
         console.warn('Nominatim reverse lookup failed:', e);
     }
 
-    // Tier 3: India Postal Pincode API (filtered by District & State)
     try {
         const cleanQuery = query.split(',')[0].trim();
         const address = addressData || {};
@@ -115,7 +113,6 @@ async function fetchAccuratePinCode(lat, lon, query, addressData) {
         console.warn('India Post API lookup failed:', e);
     }
 
-    // Tier 4: BigDataCloud Reverse Geocoding API
     try {
         const bdcUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
         const bdcRes = await fetch(bdcUrl);
@@ -156,14 +153,16 @@ export default function DashboardHome() {
     const [coords, setCoords] = useState({ lat: 18.5204, lng: 73.8567 });
     const [weather, setWeather] = useState(null);
     const [weatherLoading, setWeatherLoading] = useState(true);
+    const [surveyData, setSurveyData] = useState(() => getInstantRegionalSurveyData('Pune'));
+
     const reportRef = useRef();
     const { addSavedSearch } = React.useContext(SavedSearchContext);
     const { t } = useTranslation();
 
-    // Initial load: fetch weather for default city (Pune)
+    // Initial load: fetch weather and regional survey for default city (Pune)
     useEffect(() => {
-        setSoilType(t('dashboard.soil_type') === 'Soil Type' ? 'Black Soil' : t('dashboard.soil_type'));
-        loadWeather(coords.lat, coords.lng).finally(() => setLoading(false));
+        loadWeather(coords.lat, coords.lng);
+        loadSurveyData(coords.lat, coords.lng, 'Pune, Maharashtra', { state: 'Maharashtra' }).finally(() => setLoading(false));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [t]);
 
@@ -179,6 +178,29 @@ export default function DashboardHome() {
         }
     }
 
+    async function loadSurveyData(lat, lng, locName = '', addressObj = {}) {
+        // Step 1: Immediately set 0ms instant baseline values!
+        const instant = getInstantRegionalSurveyData(locName);
+        setSurveyData({
+            ...instant,
+            loading: false
+        });
+        setSoilType(instant.soilType);
+
+        // Step 2: Refine in background asynchronously
+        try {
+            const data = await fetchRegionalSurveyData(lat, lng, locName, addressObj);
+            setSurveyData(prev => ({
+                ...prev,
+                ...data,
+                loading: false
+            }));
+            setSoilType(data.soilType);
+        } catch (err) {
+            // Baseline is already set
+        }
+    }
+
     const handleSearch = async (e) => {
         e.preventDefault();
         if (!searchQuery.trim()) return;
@@ -189,13 +211,17 @@ export default function DashboardHome() {
             const geo = await geocodeCity(searchQuery);
             if (geo) {
                 setCoords({ lat: geo.lat, lng: geo.lon });
-                // Use a cleaner display name (first two comma parts)
                 const parts = geo.displayName.split(',');
                 const cleanName = parts.slice(0, 2).join(',').trim();
                 setLocationName(cleanName);
-                const resolvedPin = await fetchAccuratePinCode(geo.lat, geo.lon, searchQuery, geo.address);
+
+                const pinPromise = fetchAccuratePinCode(geo.lat, geo.lon, searchQuery, geo.address);
+                const weatherPromise = loadWeather(geo.lat, geo.lon);
+                const surveyPromise = loadSurveyData(geo.lat, geo.lon, cleanName, geo.address);
+
+                const resolvedPin = await pinPromise;
                 setPinCode(resolvedPin);
-                await loadWeather(geo.lat, geo.lon);
+                await Promise.all([weatherPromise, surveyPromise]);
             } else {
                 alert('Location not found. Please try a different search term.');
             }
@@ -205,7 +231,6 @@ export default function DashboardHome() {
             setLoading(false);
         }
     };
-
 
     const handleGeneratePDF = () => {
         const element = reportRef.current;
@@ -283,41 +308,41 @@ export default function DashboardHome() {
                                     </div>
                                 </div>
                                 
-                                <Row className="g-3">
-                                    <Col sm={6}>
-                                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.pin_code')}:</span>
-                                            <span className="fw-bold">{pinCode}</span>
+                                <Row className="g-4 py-3 flex-grow-1">
+                                    <Col sm={6} className="d-flex flex-column justify-content-between">
+                                        <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                            <span className="text-light fs-6">{t('dashboard.pin_code')}:</span>
+                                            <span className="fw-bold fs-5">{pinCode}</span>
                                         </div>
-                                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.soil_type')}:</span>
-                                            <span className="fw-bold">{soilType || 'Black Soil'}</span>
+                                        <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                            <span className="text-light fs-6">{t('dashboard.soil_type')}:</span>
+                                            <span className="fw-bold fs-6">{surveyData.soilType || 'Black Cotton Soil'}</span>
                                         </div>
-                                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.flood_risk')}:</span>
-                                            <span className="fw-bold text-success">{t('dashboard.low')}</span>
-                                        </div>
-                                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.avg_rainfall')}:</span>
-                                            <span className="fw-bold">700 {t('dashboard.mm')}</span>
+                                        <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                            <span className="text-light fs-6">GW Recharge:</span>
+                                            <span className="fw-bold fs-6 text-success">
+                                                {surveyData.gwRechargeBCM || '44.10 BCM'}
+                                            </span>
                                         </div>
                                     </Col>
-                                    <Col sm={6}>
-                                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.groundwater')}:</span>
-                                            <span className="fw-bold text-warning">{t('dashboard.semi_critical')}</span>
+                                    <Col sm={6} className="d-flex flex-column justify-content-between">
+                                        <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                            <span className="text-light fs-6">{t('dashboard.groundwater')}:</span>
+                                            <span className={`fw-bold fs-6 ${surveyData.groundwaterVariant || 'text-success'}`}>
+                                                {surveyData.groundwaterStatusFull || 'Safe (50.0%)'}
+                                            </span>
                                         </div>
-                                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.borewell_depth')}:</span>
-                                            <span className="fw-bold">120 {t('dashboard.meters')}</span>
+                                        <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                            <span className="text-light fs-6">{t('dashboard.borewell_depth')}:</span>
+                                            <span className="fw-bold fs-6">
+                                                {surveyData.borewellDepthFeet || '100 - 150 feet'}
+                                            </span>
                                         </div>
-                                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.water_retention')}:</span>
-                                            <span className="fw-bold">{t('dashboard.high')}</span>
-                                        </div>
-                                        <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.05) !important' }}>
-                                            <span className="text-light">{t('dashboard.soil_drainage')}:</span>
-                                            <span className="fw-bold">{t('dashboard.moderate')}</span>
+                                        <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                            <span className="text-light fs-6">Avg Annual Rainfall:</span>
+                                            <span className="fw-bold fs-6" style={{ color: '#00bcd4' }}>
+                                                {`${surveyData.avgRainfall || 688} ${t('dashboard.mm')}`}
+                                            </span>
                                         </div>
                                     </Col>
                                 </Row>
