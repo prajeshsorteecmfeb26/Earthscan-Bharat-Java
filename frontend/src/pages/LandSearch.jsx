@@ -409,40 +409,40 @@ export default function LandSearch() {
                         </div>
                     </div>
                     
-                    <Row className="g-3">
-                        <Col sm={6}>
-                            <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
-                                <span className="text-light">PIN Code:</span>
-                                <span className="fw-bold">{pinCode}</span>
+                    <Row className="g-4 py-3 flex-grow-1">
+                        <Col sm={6} className="d-flex flex-column justify-content-between">
+                            <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                <span className="text-light fs-6">PIN Code:</span>
+                                <span className="fw-bold fs-5">{pinCode}</span>
                             </div>
-                            <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
-                                <span className="text-light">Soil Type:</span>
-                                <span className="fw-bold">{surveyData.loading ? <Spinner size="sm" variant="light" /> : (surveyData.soilType || 'Black Cotton Soil')}</span>
+                            <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                <span className="text-light fs-6">Soil Type:</span>
+                                <span className="fw-bold fs-6">{surveyData.soilType || 'Black Cotton Soil'}</span>
                             </div>
-                            <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
-                                <span className="text-light">GW Recharge:</span>
-                                <span className="fw-bold text-success">
-                                    {surveyData.loading ? <Spinner size="sm" variant="light" /> : (surveyData.gwRechargeBCM || '44.10 BCM')}
+                            <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                <span className="text-light fs-6">GW Recharge:</span>
+                                <span className="fw-bold fs-6 text-success">
+                                    {surveyData.gwRechargeBCM || '44.10 BCM'}
                                 </span>
                             </div>
                         </Col>
-                        <Col sm={6}>
-                            <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
-                                <span className="text-light">Groundwater Status:</span>
-                                <span className={`fw-bold ${surveyData.groundwaterVariant || 'text-success'}`}>
-                                    {surveyData.loading ? <Spinner size="sm" variant="light" /> : (surveyData.groundwaterStatusFull || 'Safe (50.0%)')}
+                        <Col sm={6} className="d-flex flex-column justify-content-between">
+                            <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                <span className="text-light fs-6">Groundwater Status:</span>
+                                <span className={`fw-bold fs-6 ${surveyData.groundwaterVariant || 'text-success'}`}>
+                                    {surveyData.groundwaterStatusFull || 'Safe (50.0%)'}
                                 </span>
                             </div>
-                            <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
-                                <span className="text-light">Average Borewell Depth:</span>
-                                <span className="fw-bold">
-                                    {surveyData.loading ? <Spinner size="sm" variant="light" /> : (surveyData.borewellDepthFeet || '100 - 150 feet')}
+                            <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                <span className="text-light fs-6">Average Borewell Depth:</span>
+                                <span className="fw-bold fs-6">
+                                    {surveyData.borewellDepthFeet || '100 - 150 feet'}
                                 </span>
                             </div>
-                            <div className="d-flex justify-content-between mb-3 border-bottom border-secondary pb-2" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
-                                <span className="text-light">Avg Annual Rainfall:</span>
-                                <span className="fw-bold" style={{ color: '#00bcd4' }}>
-                                    {surveyData.loading ? <Spinner size="sm" variant="light" /> : `${surveyData.avgRainfall || 688} mm`}
+                            <div className="d-flex justify-content-between align-items-center py-3 border-bottom border-secondary" style={{ borderColor: 'rgba(255,255,255,0.08) !important' }}>
+                                <span className="text-light fs-6">Avg Annual Rainfall:</span>
+                                <span className="fw-bold fs-6" style={{ color: '#00bcd4' }}>
+                                    {`${surveyData.avgRainfall || 688} mm`}
                                 </span>
                             </div>
                         </Col>

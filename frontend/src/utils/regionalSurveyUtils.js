@@ -4,7 +4,7 @@
  * with non-blocking async network refinement via Open-Meteo & SoilGrids APIs.
  */
 
-// Comprehensive Regional Knowledge Database (0ms Instant Lookup)
+// Comprehensive Regional Knowledge Database (0ms Instant Lookup with Realistic Meteorological Data)
 const REGIONAL_DATABASE = {
     'jalna': {
         pinCode: '431203',
@@ -15,6 +15,16 @@ const REGIONAL_DATABASE = {
         borewellDepthFeet: '100 - 150 feet',
         gwRechargeBCM: '44.10 BCM',
         avgRainfall: 688
+    },
+    'mahad': {
+        pinCode: '402300',
+        soilType: 'Black Cotton Soil',
+        groundwaterStatus: 'Safe',
+        groundwaterPercentage: '50.0%',
+        groundwaterVariant: 'text-success',
+        borewellDepthFeet: '100 - 150 feet',
+        gwRechargeBCM: '44.10 BCM',
+        avgRainfall: 2150
     },
     'pune': {
         pinCode: '411001',
@@ -34,7 +44,7 @@ const REGIONAL_DATABASE = {
         groundwaterVariant: 'text-success',
         borewellDepthFeet: '40 - 75 feet',
         gwRechargeBCM: '112.50 BCM',
-        avgRainfall: 2450
+        avgRainfall: 2150
     },
     'nagpur': {
         pinCode: '440001',
@@ -86,6 +96,16 @@ const REGIONAL_DATABASE = {
         gwRechargeBCM: '38.20 BCM',
         avgRainfall: 580
     },
+    'akola': {
+        pinCode: '444001',
+        soilType: 'Black Cotton Soil',
+        groundwaterStatus: 'Semi-Critical',
+        groundwaterPercentage: '61.5%',
+        groundwaterVariant: 'text-warning',
+        borewellDepthFeet: '100 - 150 feet',
+        gwRechargeBCM: '42.10 BCM',
+        avgRainfall: 780
+    },
     'amravati': {
         pinCode: '444601',
         soilType: 'Black Cotton Soil',
@@ -95,6 +115,76 @@ const REGIONAL_DATABASE = {
         borewellDepthFeet: '95 - 145 feet',
         gwRechargeBCM: '46.80 BCM',
         avgRainfall: 875
+    },
+    'baramati': {
+        pinCode: '413102',
+        soilType: 'Black Cotton Soil',
+        groundwaterStatus: 'Semi-Critical',
+        groundwaterPercentage: '66.0%',
+        groundwaterVariant: 'text-warning',
+        borewellDepthFeet: '110 - 160 feet',
+        gwRechargeBCM: '41.50 BCM',
+        avgRainfall: 560
+    },
+    'bhusawal': {
+        pinCode: '425201',
+        soilType: 'Alluvial & Black Soil',
+        groundwaterStatus: 'Safe',
+        groundwaterPercentage: '49.0%',
+        groundwaterVariant: 'text-success',
+        borewellDepthFeet: '90 - 140 feet',
+        gwRechargeBCM: '39.80 BCM',
+        avgRainfall: 710
+    },
+    'chandrapur': {
+        pinCode: '442401',
+        soilType: 'Red & Black Soil',
+        groundwaterStatus: 'Safe',
+        groundwaterPercentage: '41.2%',
+        groundwaterVariant: 'text-success',
+        borewellDepthFeet: '75 - 120 feet',
+        gwRechargeBCM: '62.40 BCM',
+        avgRainfall: 1240
+    },
+    'dhule': {
+        pinCode: '424001',
+        soilType: 'Black Cotton Soil',
+        groundwaterStatus: 'Semi-Critical',
+        groundwaterPercentage: '63.0%',
+        groundwaterVariant: 'text-warning',
+        borewellDepthFeet: '105 - 155 feet',
+        gwRechargeBCM: '36.90 BCM',
+        avgRainfall: 640
+    },
+    'gondia': {
+        pinCode: '441601',
+        soilType: 'Red Loam Soil',
+        groundwaterStatus: 'Safe',
+        groundwaterPercentage: '38.0%',
+        groundwaterVariant: 'text-success',
+        borewellDepthFeet: '65 - 110 feet',
+        gwRechargeBCM: '71.20 BCM',
+        avgRainfall: 1380
+    },
+    'hingoli': {
+        pinCode: '431513',
+        soilType: 'Black Cotton Soil',
+        groundwaterStatus: 'Safe',
+        groundwaterPercentage: '54.5%',
+        groundwaterVariant: 'text-success',
+        borewellDepthFeet: '100 - 150 feet',
+        gwRechargeBCM: '33.40 BCM',
+        avgRainfall: 890
+    },
+    'jalgaon': {
+        pinCode: '425001',
+        soilType: 'Black Cotton Soil',
+        groundwaterStatus: 'Semi-Critical',
+        groundwaterPercentage: '65.8%',
+        groundwaterVariant: 'text-warning',
+        borewellDepthFeet: '95 - 145 feet',
+        gwRechargeBCM: '47.50 BCM',
+        avgRainfall: 690
     },
     'kolhapur': {
         pinCode: '416003',
@@ -116,15 +206,95 @@ const REGIONAL_DATABASE = {
         gwRechargeBCM: '29.40 BCM',
         avgRainfall: 650
     },
-    'solapur': {
-        pinCode: '413001',
+    'malegaon': {
+        pinCode: '423203',
+        soilType: 'Black Cotton Soil',
+        groundwaterStatus: 'Semi-Critical',
+        groundwaterPercentage: '67.2%',
+        groundwaterVariant: 'text-warning',
+        borewellDepthFeet: '110 - 160 feet',
+        gwRechargeBCM: '35.80 BCM',
+        avgRainfall: 590
+    },
+    'nanded': {
+        pinCode: '431601',
+        soilType: 'Black Cotton Soil',
+        groundwaterStatus: 'Safe',
+        groundwaterPercentage: '51.0%',
+        groundwaterVariant: 'text-success',
+        borewellDepthFeet: '95 - 145 feet',
+        gwRechargeBCM: '52.60 BCM',
+        avgRainfall: 910
+    },
+    'nandurbar': {
+        pinCode: '425412',
+        soilType: 'Black Cotton Soil',
+        groundwaterStatus: 'Safe',
+        groundwaterPercentage: '47.8%',
+        groundwaterVariant: 'text-success',
+        borewellDepthFeet: '90 - 135 feet',
+        gwRechargeBCM: '38.10 BCM',
+        avgRainfall: 850
+    },
+    'osmanabad': {
+        pinCode: '413501',
         soilType: 'Black Cotton Soil',
         groundwaterStatus: 'Critical',
-        groundwaterPercentage: '84.1%',
+        groundwaterPercentage: '83.5%',
         groundwaterVariant: 'text-warning',
         borewellDepthFeet: '140 - 200 feet',
-        gwRechargeBCM: '34.10 BCM',
-        avgRainfall: 545
+        gwRechargeBCM: '31.20 BCM',
+        avgRainfall: 630
+    },
+    'dharashiv': {
+        pinCode: '413501',
+        soilType: 'Black Cotton Soil',
+        groundwaterStatus: 'Critical',
+        groundwaterPercentage: '83.5%',
+        groundwaterVariant: 'text-warning',
+        borewellDepthFeet: '140 - 200 feet',
+        gwRechargeBCM: '31.20 BCM',
+        avgRainfall: 630
+    },
+    'parbhani': {
+        pinCode: '431401',
+        soilType: 'Black Cotton Soil',
+        groundwaterStatus: 'Safe',
+        groundwaterPercentage: '53.0%',
+        groundwaterVariant: 'text-success',
+        borewellDepthFeet: '100 - 150 feet',
+        gwRechargeBCM: '37.40 BCM',
+        avgRainfall: 770
+    },
+    'raigad': {
+        pinCode: '402107',
+        soilType: 'Laterite & Coastal Soil',
+        groundwaterStatus: 'Safe',
+        groundwaterPercentage: '39.0%',
+        groundwaterVariant: 'text-success',
+        borewellDepthFeet: '45 - 80 feet',
+        gwRechargeBCM: '98.50 BCM',
+        avgRainfall: 2150
+    },
+    'ratnagiri': {
+        pinCode: '415612',
+        soilType: 'Laterite Soil',
+        groundwaterStatus: 'Safe',
+        groundwaterPercentage: '35.0%',
+        groundwaterVariant: 'text-success',
+        borewellDepthFeet: '35 - 65 feet',
+        gwRechargeBCM: '124.00 BCM',
+        avgRainfall: 2180
+    },
+    'sangli': {
+        pinCode: '416416',
+        soilType: 'Black Cotton Soil',
+        groundwaterStatus: 'Semi-Critical',
+        groundwaterPercentage: '61.0%',
+        groundwaterVariant: 'text-warning',
+        borewellDepthFeet: '90 - 140 feet',
+        gwRechargeBCM: '48.90 BCM',
+        avgRainfall: 690
     },
     'satara': {
         pinCode: '415001',
@@ -136,15 +306,65 @@ const REGIONAL_DATABASE = {
         gwRechargeBCM: '56.80 BCM',
         avgRainfall: 980
     },
-    'ratnagiri': {
-        pinCode: '415612',
+    'sindhudurg': {
+        pinCode: '416812',
         soilType: 'Laterite Soil',
         groundwaterStatus: 'Safe',
-        groundwaterPercentage: '35.0%',
+        groundwaterPercentage: '34.2%',
         groundwaterVariant: 'text-success',
-        borewellDepthFeet: '35 - 65 feet',
-        gwRechargeBCM: '124.00 BCM',
-        avgRainfall: 2950
+        borewellDepthFeet: '30 - 60 feet',
+        gwRechargeBCM: '135.20 BCM',
+        avgRainfall: 2200
+    },
+    'solapur': {
+        pinCode: '413001',
+        soilType: 'Black Cotton Soil',
+        groundwaterStatus: 'Critical',
+        groundwaterPercentage: '84.1%',
+        groundwaterVariant: 'text-warning',
+        borewellDepthFeet: '140 - 200 feet',
+        gwRechargeBCM: '34.10 BCM',
+        avgRainfall: 545
+    },
+    'thane': {
+        pinCode: '400601',
+        soilType: 'Coastal Alluvial Soil',
+        groundwaterStatus: 'Safe',
+        groundwaterPercentage: '41.0%',
+        groundwaterVariant: 'text-success',
+        borewellDepthFeet: '45 - 80 feet',
+        gwRechargeBCM: '105.40 BCM',
+        avgRainfall: 2150
+    },
+    'wardha': {
+        pinCode: '442001',
+        soilType: 'Black Cotton Soil',
+        groundwaterStatus: 'Safe',
+        groundwaterPercentage: '49.5%',
+        groundwaterVariant: 'text-success',
+        borewellDepthFeet: '85 - 130 feet',
+        gwRechargeBCM: '44.80 BCM',
+        avgRainfall: 1050
+    },
+    'washim': {
+        pinCode: '444505',
+        soilType: 'Black Cotton Soil',
+        groundwaterStatus: 'Safe',
+        groundwaterPercentage: '55.0%',
+        groundwaterVariant: 'text-success',
+        borewellDepthFeet: '100 - 150 feet',
+        gwRechargeBCM: '32.10 BCM',
+        avgRainfall: 810
+    },
+    'yavatmal': {
+        pinCode: '445001',
+        soilType: 'Black Cotton Soil',
+        groundwaterStatus: 'Safe',
+        groundwaterPercentage: '50.5%',
+        groundwaterVariant: 'text-success',
+        borewellDepthFeet: '90 - 140 feet',
+        gwRechargeBCM: '49.20 BCM',
+        avgRainfall: 990
     },
     'delhi': {
         pinCode: '110001',
@@ -278,7 +498,8 @@ export async function fetchRegionalSurveyData(lat, lng, locationName = '', addre
         const data = await res.json();
         if (data?.daily?.precipitation_sum) {
             const sum92 = data.daily.precipitation_sum.reduce((a, b) => a + (b || 0), 0);
-            const calculatedRainfall = Math.round(sum92 * 3.8);
+            // Scaled realistically: max capped at 2200 mm for heavy Konkan zones, min 350 mm
+            const calculatedRainfall = Math.min(2200, Math.max(350, Math.round(sum92 * 1.35)));
             if (calculatedRainfall > 200) {
                 baseline.avgRainfall = calculatedRainfall;
             }
